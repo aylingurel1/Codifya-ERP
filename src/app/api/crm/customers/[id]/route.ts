@@ -1,0 +1,82 @@
+import { NextRequest } from 'next/server'
+import { CustomerService } from '@/modules/crm/services/customerService'
+import { successResponse, errorResponse, notFoundResponse } from '@/utils/api'
+import { requireManager, AuthenticatedRequest } from '@/lib/auth'
+import { UpdateCustomerRequest } from '@/modules/crm/types'
+
+const customerService = new CustomerService()
+
+// GET - Müşteri detayı
+async function handleGet(request: AuthenticatedRequest) {
+  try {
+    const id = request.nextUrl.pathname.split('/').pop()
+    if (!id) {
+      return notFoundResponse()
+    }
+
+    const customer = await customerService.getCustomerById(id)
+    return successResponse(customer, 'Müşteri detayı getirildi')
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'Müşteri bulunamadı') {
+        return notFoundResponse()
+      }
+      return errorResponse(error.message)
+    }
+    return errorResponse('Internal server error', 500)
+  }
+}
+
+// PUT - Müşteri güncelleme
+async function handlePut(request: AuthenticatedRequest) {
+  try {
+    const id = request.nextUrl.pathname.split('/').pop()
+    if (!id) {
+      return notFoundResponse()
+    }
+
+    const body: UpdateCustomerRequest = await request.json()
+    
+    // Validation
+    if (!body.name && !body.email && !body.phone && !body.address && 
+        !body.company && !body.taxNumber && body.isActive === undefined) {
+      return errorResponse('En az bir alan güncellenmelidir')
+    }
+
+    const customer = await customerService.updateCustomer(id, body)
+    return successResponse(customer, 'Müşteri başarıyla güncellendi')
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'Müşteri bulunamadı') {
+        return notFoundResponse()
+      }
+      return errorResponse(error.message)
+    }
+    return errorResponse('Internal server error', 500)
+  }
+}
+
+// DELETE - Müşteri silme
+async function handleDelete(request: AuthenticatedRequest) {
+  try {
+    const id = request.nextUrl.pathname.split('/').pop()
+    if (!id) {
+      return notFoundResponse()
+    }
+
+    const result = await customerService.deleteCustomer(id)
+    return successResponse(result, 'Müşteri başarıyla silindi')
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'Müşteri bulunamadı') {
+        return notFoundResponse()
+      }
+      return errorResponse(error.message)
+    }
+    return errorResponse('Internal server error', 500)
+  }
+}
+
+export const GET = requireManager(handleGet)
+export const PUT = requireManager(handlePut)
+export const DELETE = requireManager(handleDelete) 
