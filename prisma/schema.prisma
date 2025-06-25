@@ -30,6 +30,8 @@ model User {
   customers Customer[]
   products  Product[]
   stockMovements StockMovement[]
+  invoices  Invoice[]
+  transactions Transaction[]
 
   @@map("users")
 }
@@ -57,6 +59,7 @@ model Customer {
 
   // İlişkiler
   orders      Order[]
+  invoices    Invoice[]
 
   @@map("customers")
 }
@@ -148,6 +151,8 @@ model Order {
   // İlişkiler
   items       OrderItem[]
   payments    Payment[]
+  invoices    Invoice[]
+  transactions Transaction[]
 
   @@map("orders")
 }
@@ -187,6 +192,9 @@ model Payment {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  // İlişkiler
+  transactions Transaction[]
+
   @@map("payments")
 }
 
@@ -202,4 +210,83 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   REFUNDED
+}
+
+// Muhasebe Yönetimi
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  orderId       String?
+  order         Order?        @relation(fields: [orderId], references: [id])
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  type          InvoiceType
+  status        InvoiceStatus @default(DRAFT)
+  subtotal      Float
+  taxAmount     Float         @default(0)
+  discount      Float         @default(0)
+  totalAmount   Float
+  dueDate       DateTime
+  issueDate     DateTime      @default(now())
+  paidDate      DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  createdBy     String
+  createdByUser User          @relation(fields: [createdBy], references: [id])
+
+  // İlişkiler
+  transactions  Transaction[]
+
+  @@map("invoices")
+}
+
+enum InvoiceType {
+  SALES
+  PURCHASE
+  EXPENSE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
+model Transaction {
+  id          String              @id @default(cuid())
+  type        TransactionType
+  category    TransactionCategory
+  amount      Float
+  description String
+  reference   String?
+  date        DateTime            @default(now())
+  invoiceId   String?
+  invoice     Invoice?            @relation(fields: [invoiceId], references: [id])
+  orderId     String?
+  order       Order?              @relation(fields: [orderId], references: [id])
+  paymentId   String?
+  payment     Payment?            @relation(fields: [paymentId], references: [id])
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  createdBy   String
+  createdByUser User              @relation(fields: [createdBy], references: [id])
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionCategory {
+  SALES
+  PURCHASE
+  SALARY
+  RENT
+  UTILITIES
+  MARKETING
+  OTHER
 }
