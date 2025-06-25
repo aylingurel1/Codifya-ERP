@@ -1,19 +1,48 @@
 import { NextResponse } from 'next/server'
 import { ApiResponse } from '@/types'
 
-export const successResponse = <T>(data: T, message?: string): NextResponse<ApiResponse<T>> => {
-  return NextResponse.json({
+export interface PaginationMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNext: boolean
+  hasPrev: boolean
+}
+
+export const successResponse = <T>(
+  data: T, 
+  message?: string, 
+  meta?: PaginationMeta
+): NextResponse<ApiResponse<T>> => {
+  const response: ApiResponse<T> = {
     success: true,
     data,
     message
-  })
+  }
+
+  if (meta) {
+    response.meta = meta
+  }
+
+  return NextResponse.json(response)
 }
 
-export const errorResponse = (error: string, status: number = 400): NextResponse<ApiResponse> => {
-  return NextResponse.json({
+export const errorResponse = (
+  error: string, 
+  status: number = 400,
+  details?: Record<string, any>
+): NextResponse<ApiResponse> => {
+  const response: ApiResponse = {
     success: false,
     error
-  }, { status })
+  }
+
+  if (details) {
+    response.details = details
+  }
+
+  return NextResponse.json(response, { status })
 }
 
 export const unauthorizedResponse = (): NextResponse<ApiResponse> => {
@@ -30,4 +59,30 @@ export const notFoundResponse = (): NextResponse<ApiResponse> => {
 
 export const serverErrorResponse = (): NextResponse<ApiResponse> => {
   return errorResponse('Internal server error', 500)
+}
+
+export const conflictResponse = (message: string = 'Resource conflict'): NextResponse<ApiResponse> => {
+  return errorResponse(message, 409)
+}
+
+export const validationErrorResponse = (details: Record<string, string[]>): NextResponse<ApiResponse> => {
+  return errorResponse('Validation failed', 400, details)
+}
+
+// Pagination helper
+export const createPaginationMeta = (
+  page: number,
+  limit: number,
+  total: number
+): PaginationMeta => {
+  const totalPages = Math.ceil(total / limit)
+  
+  return {
+    page,
+    limit,
+    total,
+    totalPages,
+    hasNext: page < totalPages,
+    hasPrev: page > 1
+  }
 } 

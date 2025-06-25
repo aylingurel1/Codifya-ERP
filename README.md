@@ -9,6 +9,7 @@ Modern işletme yönetimi için geliştirilmiş kapsamlı ERP (Enterprise Resour
 - JWT tabanlı kimlik doğrulama
 - Rol tabanlı yetkilendirme (Admin, Manager, User)
 - Güvenli şifre hashleme
+- Rate limiting koruması
 
 ### 👥 Müşteri Yönetimi (CRM)
 - Müşteri kayıt ve profil yönetimi
@@ -42,6 +43,9 @@ Modern işletme yönetimi için geliştirilmiş kapsamlı ERP (Enterprise Resour
 - **Veritabanı**: SQLite (Prisma ORM)
 - **Kimlik Doğrulama**: JWT, bcryptjs
 - **UI Bileşenleri**: Lucide React, Headless UI
+- **Validation**: Custom validation utilities
+- **Logging**: Structured logging system
+- **Error Handling**: Centralized error management
 
 ## 📁 Proje Yapısı
 
@@ -50,7 +54,10 @@ src/
 ├── app/                    # Next.js App Router
 │   ├── api/               # API endpoints
 │   │   ├── auth/          # Authentication APIs
-│   │   └── inventory/     # Inventory APIs
+│   │   ├── inventory/     # Inventory APIs
+│   │   ├── orders/        # Order APIs
+│   │   ├── crm/           # Customer APIs
+│   │   └── accounting/    # Financial APIs
 │   ├── globals.css        # Global styles
 │   ├── layout.tsx         # Root layout
 │   └── page.tsx           # Home page
@@ -58,6 +65,8 @@ src/
 ├── lib/                   # Library configurations
 │   ├── auth.ts           # Authentication middleware
 │   └── prisma.ts         # Prisma client
+├── middleware/            # Custom middleware
+│   └── rateLimit.ts      # Rate limiting
 ├── modules/              # Feature modules
 │   ├── auth/             # Authentication module
 │   │   ├── components/   # Auth components
@@ -73,7 +82,10 @@ src/
 ├── types/                # Global TypeScript types
 ├── utils/                # Utility functions
 │   ├── api.ts           # API response utilities
-│   └── auth.ts          # Authentication utilities
+│   ├── auth.ts          # Authentication utilities
+│   ├── validation.ts    # Validation utilities
+│   ├── logger.ts        # Logging utilities
+│   └── errors.ts        # Error handling utilities
 └── hooks/                # Custom React hooks
 ```
 
@@ -102,7 +114,11 @@ npm install
 
 3. **Environment değişkenlerini ayarlayın:**
 ```bash
-cp .env.example .env
+# .env dosyası oluşturun ve aşağıdaki değişkenleri ekleyin:
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="your-super-secret-jwt-key-here"
+JWT_EXPIRES_IN="24h"
+NODE_ENV="development"
 ```
 
 4. **Veritabanını oluşturun:**
@@ -114,6 +130,33 @@ npx prisma migrate dev
 ```bash
 npm run dev
 ```
+
+## 🔧 Yeni Özellikler
+
+### Validation Sistemi
+- Email, şifre, SKU, fiyat validasyonu
+- Türkiye telefon numarası ve vergi numarası formatı
+- Merkezi validation utilities
+
+### Logging Sistemi
+- Structured logging
+- Development ve production modları
+- Error tracking
+
+### Error Handling
+- Merkezi error management
+- Custom error sınıfları
+- Consistent error responses
+
+### Rate Limiting
+- API endpoint koruması
+- Auth endpoint'leri için daha sıkı limitler
+- IP tabanlı rate limiting
+
+### Enhanced API Responses
+- Pagination desteği
+- Detailed error responses
+- Consistent response format
 
 ## 📊 Veritabanı Şeması
 
@@ -196,85 +239,32 @@ npm run dev
 {
   "success": true,
   "data": {},
-  "message": "İşlem başarılı"
+  "message": "İşlem başarılı",
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 100,
+    "totalPages": 10,
+    "hasNext": true,
+    "hasPrev": false
+  }
 }
 ```
 
-## 🧪 Test
+## 🔒 Güvenlik
 
-```bash
-# Lint kontrolü
-npm run lint
-
-# Type kontrolü
-npm run type-check
-
-# Build test
-npm run build
-```
+- JWT token expiration
+- Password hashing (bcrypt)
+- Rate limiting
+- Input validation
+- SQL injection koruması (Prisma)
+- XSS koruması
 
 ## 📝 Geliştirme Notları
 
-### Tamamlanan İşler ✅
-1. **Base Proje Yapısı**
-   - Next.js 15 + TypeScript kurulumu
-   - Tailwind CSS entegrasyonu
-   - ESLint yapılandırması
-
-2. **Veritabanı Tasarımı**
-   - Prisma ORM kurulumu
-   - SQLite veritabanı yapılandırması
-   - ERP modülleri için veritabanı şeması
-
-3. **Authentication Sistemi**
-   - JWT tabanlı kimlik doğrulama
-   - bcryptjs ile şifre hashleme
-   - Rol tabanlı yetkilendirme middleware'i
-   - Register ve Login API endpoint'leri
-
-4. **Inventory Modülü** ✅
-   - Ürün yönetimi (CRUD işlemleri)
-   - Kategori yönetimi (hiyerarşik yapı)
-   - Stok hareketi takibi
-   - Stok uyarıları ve dashboard
-   - Filtreleme ve arama özellikleri
-   - API endpoint'leri
-
-5. **SOLID Prensipleri**
-   - Modüler klasör yapısı
-   - Service katmanı implementasyonu
-   - Interface segregation
-   - Dependency injection hazırlığı
-
-6. **Temel UI**
-   - Responsive giriş/kayıt formu
-   - Modern tasarım
-   - Form validasyonu
-
-### Devam Eden İşler 🔄
-- CRM modülü geliştirme
-- Order management modülü
-- Financial management modülü
-
-### Planlanan İşler 📋
-- Dashboard geliştirme
-- Raporlama sistemi
-- Export/Import özellikleri
-- Real-time bildirimler
-- Mobile responsive tasarım
-
-## 🤝 Katkıda Bulunma
-
-1. Fork yapın
-2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Commit yapın (`git commit -m 'Add amazing feature'`)
-4. Push yapın (`git push origin feature/amazing-feature`)
-5. Pull Request oluşturun
-
-## 📄 Lisans
-
-Bu proje MIT lisansı altında lisanslanmıştır.
-
-## 📞 İletişim
-
-Proje hakkında sorularınız için issue açabilirsiniz.
+- TypeScript strict mode aktif
+- ESLint kuralları uygulanıyor
+- Prettier code formatting
+- Modular architecture
+- SOLID principles
+- Error handling best practices
