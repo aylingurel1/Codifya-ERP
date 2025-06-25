@@ -1,6 +1,22 @@
-import { User, Customer, Product, Payment } from '@/types'
+import { User, Product, Payment } from '@/types'
 
 export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+
+// Customer interface'ini burada tanımlayalım
+export interface Customer {
+  id: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  company?: string | null
+  taxNumber?: string | null
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+  createdBy: string
+  createdByUser: User
+}
 
 export interface OrderItem {
   id: string
@@ -66,4 +82,33 @@ export interface OrderListResponse {
   page: number
   limit: number
   totalPages: number
+}
+
+export interface OrderStats {
+  totalOrders: number
+  pendingOrders: number
+  completedOrders: number
+  cancelledOrders: number
+  totalRevenue: number
+  averageOrderValue: number
+  topProducts: Array<{
+    product: Product
+    totalQuantity: number
+    totalRevenue: number
+  }>
+  orderGrowth: Array<{
+    month: string
+    count: number
+    revenue: number
+  }>
+}
+
+export interface OrderHistory {
+  order: Order
+  statusHistory: Array<{
+    status: OrderStatus
+    changedAt: Date
+    changedBy: User
+  }>
+  paymentHistory: Payment[]
 } 

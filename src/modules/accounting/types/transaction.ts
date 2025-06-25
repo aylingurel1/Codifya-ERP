@@ -9,9 +9,9 @@ export interface Transaction {
   description: string
   reference?: string | null
   date: Date
-  invoiceId?: string
-  orderId?: string
-  paymentId?: string
+  invoiceId?: string | null
+  orderId?: string | null
+  paymentId?: string | null
   createdAt: Date
   updatedAt: Date
   createdBy: string

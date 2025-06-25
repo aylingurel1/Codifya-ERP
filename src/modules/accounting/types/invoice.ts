@@ -4,8 +4,8 @@ export type InvoiceType = 'SALES' | 'PURCHASE' | 'EXPENSE'
 export interface Invoice {
   id: string
   invoiceNumber: string
-  orderId?: string
-  customerId?: string
+  orderId?: string | null
+  customerId?: string | null
   customer?: any
   type: InvoiceType
   status: InvoiceStatus

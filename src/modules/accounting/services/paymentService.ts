@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { CreatePaymentRequest, UpdatePaymentRequest, PaymentFilters, PaymentListResponse, PaymentMethod, PaymentStatus } from '../types/payment'
+import { PaymentStats } from '../types'
+import { logger } from '@/utils/logger'
 
 export class PaymentService {
   // Ödeme oluşturma
@@ -40,6 +42,12 @@ export class PaymentService {
       }
     })
 
+    logger.info('Ödeme oluşturuldu', { 
+      paymentId: payment.id, 
+      orderId: payment.orderId, 
+      amount: payment.amount,
+      method: payment.method 
+    })
     return payment
   }
 
@@ -85,6 +93,7 @@ export class PaymentService {
       }
     })
 
+    logger.info('Ödeme güncellendi', { paymentId: id })
     return updated
   }
 
@@ -98,6 +107,7 @@ export class PaymentService {
     }
 
     await prisma.payment.delete({ where: { id } })
+    logger.info('Ödeme silindi', { paymentId: id })
     return { message: 'Ödeme silindi' }
   }
 
@@ -194,6 +204,7 @@ export class PaymentService {
       }
     })
 
+    logger.info('Ödeme durumu güncellendi', { paymentId: id, status })
     return updated
   }
 
@@ -206,21 +217,69 @@ export class PaymentService {
     
     if (!order) throw new Error('Sipariş bulunamadı')
 
-    const totalPaid = order.payments
-      .filter(p => p.status === 'COMPLETED')
-      .reduce((sum, p) => sum + p.amount, 0)
-    
-    const pendingPayments = order.payments
-      .filter(p => p.status === 'PENDING')
-      .reduce((sum, p) => sum + p.amount, 0)
+    const totalPaid = order.payments.reduce((sum, payment) => {
+      return payment.status === 'COMPLETED' ? sum + payment.amount : sum
+    }, 0)
+
+    const pendingPayments = order.payments.filter(p => p.status === 'PENDING')
+    const completedPayments = order.payments.filter(p => p.status === 'COMPLETED')
 
     return {
       orderTotal: order.totalAmount,
       totalPaid,
-      pendingAmount: pendingPayments,
       remainingAmount: order.totalAmount - totalPaid,
-      isFullyPaid: totalPaid >= order.totalAmount,
-      payments: order.payments
+      pendingPayments,
+      completedPayments,
+      isFullyPaid: totalPaid >= order.totalAmount
+    }
+  }
+
+  // Ödeme istatistikleri
+  async getPaymentStats(): Promise<PaymentStats> {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    // Temel istatistikler
+    const totalPayments = await prisma.payment.count()
+    const completedPayments = await prisma.payment.count({ where: { status: 'COMPLETED' } })
+    const pendingPayments = await prisma.payment.count({ where: { status: 'PENDING' } })
+    const failedPayments = await prisma.payment.count({ where: { status: 'FAILED' } })
+
+    // Tutar istatistikleri
+    const totalAmount = await prisma.payment.aggregate({
+      _sum: { amount: true }
+    })
+
+    const completedAmount = await prisma.payment.aggregate({
+      where: { status: 'COMPLETED' },
+      _sum: { amount: true }
+    })
+
+    const pendingAmount = await prisma.payment.aggregate({
+      where: { status: 'PENDING' },
+      _sum: { amount: true }
+    })
+
+    // Ödeme yöntemi istatistikleri
+    const paymentMethods = await prisma.payment.groupBy({
+      by: ['method'],
+      _count: { method: true },
+      _sum: { amount: true }
+    })
+
+    return {
+      totalPayments,
+      completedPayments,
+      pendingPayments,
+      failedPayments,
+      totalAmount: totalAmount._sum.amount || 0,
+      completedAmount: completedAmount._sum.amount || 0,
+      pendingAmount: pendingAmount._sum.amount || 0,
+      paymentMethods: paymentMethods.map(pm => ({
+        method: pm.method,
+        count: pm._count.method,
+        total: Number(pm._sum.amount) || 0
+      }))
     }
   }
 } 

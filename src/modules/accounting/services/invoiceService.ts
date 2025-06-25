@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { CreateInvoiceRequest, UpdateInvoiceRequest, InvoiceFilters, InvoiceListResponse, InvoiceStatus, InvoiceType } from '../types/invoice'
+import { InvoiceStats } from '../types'
+import { logger } from '@/utils/logger'
 
 export class InvoiceService {
   // Fatura oluşturma
@@ -39,6 +41,7 @@ export class InvoiceService {
       }
     })
 
+    logger.info('Fatura oluşturuldu', { invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, createdBy })
     return invoice
   }
 
@@ -113,6 +116,7 @@ export class InvoiceService {
       }
     })
 
+    logger.info('Fatura güncellendi', { invoiceId: id })
     return updated
   }
 
@@ -126,6 +130,7 @@ export class InvoiceService {
     }
 
     await prisma.invoice.delete({ where: { id } })
+    logger.info('Fatura silindi', { invoiceId: id })
     return { message: 'Fatura silindi' }
   }
 
@@ -202,6 +207,7 @@ export class InvoiceService {
         createdByUser: true
       }
     })
+
     if (!invoice) throw new Error('Fatura bulunamadı')
     return invoice
   }
@@ -213,7 +219,7 @@ export class InvoiceService {
 
     const updated = await prisma.invoice.update({
       where: { id },
-      data: { 
+      data: {
         status,
         paidDate: status === 'PAID' ? new Date() : invoice.paidDate
       },
@@ -229,6 +235,7 @@ export class InvoiceService {
       }
     })
 
+    logger.info('Fatura durumu güncellendi', { invoiceId: id, status })
     return updated
   }
 
@@ -237,15 +244,32 @@ export class InvoiceService {
     const totalInvoices = await prisma.invoice.count()
     const paidInvoices = await prisma.invoice.count({ where: { status: 'PAID' } })
     const pendingInvoices = await prisma.invoice.count({ where: { status: 'SENT' } })
-    const draftInvoices = await prisma.invoice.count({ where: { status: 'DRAFT' } })
+    const overdueInvoices = await prisma.invoice.count({
+      where: {
+        status: { not: 'PAID' },
+        dueDate: { lt: new Date() }
+      }
+    })
 
     const totalAmount = await prisma.invoice.aggregate({
+      _sum: { totalAmount: true }
+    })
+
+    const paidAmount = await prisma.invoice.aggregate({
       where: { status: 'PAID' },
       _sum: { totalAmount: true }
     })
 
-    const pendingAmount = await prisma.invoice.aggregate({
-      where: { status: 'SENT' },
+    const outstandingAmount = await prisma.invoice.aggregate({
+      where: { status: { not: 'PAID' } },
+      _sum: { totalAmount: true }
+    })
+
+    const overdueAmount = await prisma.invoice.aggregate({
+      where: {
+        status: { not: 'PAID' },
+        dueDate: { lt: new Date() }
+      },
       _sum: { totalAmount: true }
     })
 
@@ -253,9 +277,62 @@ export class InvoiceService {
       totalInvoices,
       paidInvoices,
       pendingInvoices,
-      draftInvoices,
-      totalPaidAmount: totalAmount._sum.totalAmount || 0,
-      totalPendingAmount: pendingAmount._sum.totalAmount || 0
+      overdueInvoices,
+      totalAmount: totalAmount._sum.totalAmount || 0,
+      paidAmount: paidAmount._sum.totalAmount || 0,
+      outstandingAmount: outstandingAmount._sum.totalAmount || 0,
+      overdueAmount: overdueAmount._sum.totalAmount || 0
+    }
+  }
+
+  // Fatura istatistikleri
+  async getInvoiceStats(): Promise<InvoiceStats> {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    // Temel istatistikler
+    const totalInvoices = await prisma.invoice.count()
+    const paidInvoices = await prisma.invoice.count({ where: { status: 'PAID' } })
+    const pendingInvoices = await prisma.invoice.count({ where: { status: 'SENT' } })
+    const overdueInvoices = await prisma.invoice.count({
+      where: {
+        status: { not: 'PAID' },
+        dueDate: { lt: new Date() }
+      }
+    })
+
+    // Tutar istatistikleri
+    const totalAmount = await prisma.invoice.aggregate({
+      _sum: { totalAmount: true }
+    })
+
+    const paidAmount = await prisma.invoice.aggregate({
+      where: { status: 'PAID' },
+      _sum: { totalAmount: true }
+    })
+
+    const outstandingAmount = await prisma.invoice.aggregate({
+      where: { status: { not: 'PAID' } },
+      _sum: { totalAmount: true }
+    })
+
+    const overdueAmount = await prisma.invoice.aggregate({
+      where: {
+        status: { not: 'PAID' },
+        dueDate: { lt: new Date() }
+      },
+      _sum: { totalAmount: true }
+    })
+
+    return {
+      totalInvoices,
+      paidInvoices,
+      pendingInvoices,
+      overdueInvoices,
+      totalAmount: totalAmount._sum.totalAmount || 0,
+      paidAmount: paidAmount._sum.totalAmount || 0,
+      outstandingAmount: outstandingAmount._sum.totalAmount || 0,
+      overdueAmount: overdueAmount._sum.totalAmount || 0
     }
   }
 } 

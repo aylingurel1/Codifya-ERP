@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { CreateOrderRequest, UpdateOrderRequest, OrderFilters, OrderListResponse, OrderStatus, OrderItem } from '../types'
+import { CreateOrderRequest, UpdateOrderRequest, OrderFilters, OrderListResponse, OrderStatus, OrderItem, OrderStats, OrderHistory } from '../types'
+import { logger } from '@/utils/logger'
 
 export class OrderService {
   // Sipariş oluşturma
@@ -71,6 +72,8 @@ export class OrderService {
       }
       return createdOrder
     })
+
+    logger.info('Sipariş oluşturuldu', { orderId: order.id, orderNumber: order.orderNumber, createdBy })
     return order
   }
 
@@ -94,6 +97,8 @@ export class OrderService {
         payments: true
       }
     })
+
+    logger.info('Sipariş güncellendi', { orderId: id })
     return updated
   }
 
@@ -111,6 +116,8 @@ export class OrderService {
       }
       await tx.order.delete({ where: { id } })
     })
+
+    logger.info('Sipariş silindi', { orderId: id })
     return { message: 'Sipariş silindi' }
   }
 
@@ -188,6 +195,8 @@ export class OrderService {
         payments: true
       }
     })
+
+    logger.info('Sipariş durumu güncellendi', { orderId: id, status })
     return updated
   }
 
@@ -255,5 +264,145 @@ export class OrderService {
         taxAmount
       }
     })
+  }
+
+  // Sipariş istatistikleri
+  async getOrderStats(): Promise<OrderStats> {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    // Toplam sipariş sayısı
+    const totalOrders = await prisma.order.count()
+
+    // Durum bazında sipariş sayıları
+    const pendingOrders = await prisma.order.count({
+      where: { status: 'PENDING' }
+    })
+
+    const completedOrders = await prisma.order.count({
+      where: { status: 'DELIVERED' }
+    })
+
+    const cancelledOrders = await prisma.order.count({
+      where: { status: 'CANCELLED' }
+    })
+
+    // Toplam gelir
+    const revenueResult = await prisma.order.aggregate({
+      where: { status: 'DELIVERED' },
+      _sum: { totalAmount: true }
+    })
+    const totalRevenue = revenueResult._sum.totalAmount || 0
+
+    // Ortalama sipariş değeri
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
+
+    // En çok satılan ürünler
+    const topProducts = await prisma.orderItem.groupBy({
+      by: ['productId'],
+      _sum: {
+        quantity: true,
+        total: true
+      },
+      orderBy: {
+        _sum: {
+          total: 'desc'
+        }
+      },
+      take: 5
+    })
+
+    const topProductsWithDetails = await Promise.all(
+      topProducts.map(async (item) => {
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId }
+        })
+        return {
+          product: product!,
+          totalQuantity: item._sum.quantity || 0,
+          totalRevenue: item._sum.total || 0
+        }
+      })
+    )
+
+    // Sipariş büyüme grafiği (son 6 ay)
+    const orderGrowth = []
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0)
+      
+      const count = await prisma.order.count({
+        where: {
+          orderDate: {
+            gte: monthStart,
+            lte: monthEnd
+          }
+        }
+      })
+
+      const revenue = await prisma.order.aggregate({
+        where: {
+          orderDate: {
+            gte: monthStart,
+            lte: monthEnd
+          },
+          status: 'DELIVERED'
+        },
+        _sum: { totalAmount: true }
+      })
+
+      orderGrowth.push({
+        month: monthStart.toLocaleDateString('tr-TR', { month: 'short', year: 'numeric' }),
+        count,
+        revenue: revenue._sum.totalAmount || 0
+      })
+    }
+
+    return {
+      totalOrders,
+      pendingOrders,
+      completedOrders,
+      cancelledOrders,
+      totalRevenue,
+      averageOrderValue,
+      topProducts: topProductsWithDetails,
+      orderGrowth
+    }
+  }
+
+  // Sipariş geçmişi
+  async getOrderHistory(orderId: string): Promise<OrderHistory> {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        },
+        customer: true,
+        createdByUser: true,
+        payments: true
+      }
+    })
+
+    if (!order) {
+      throw new Error('Sipariş bulunamadı')
+    }
+
+    // Basit status history (gerçek uygulamada ayrı bir tablo olabilir)
+    const statusHistory = [
+      {
+        status: order.status as OrderStatus,
+        changedAt: order.updatedAt,
+        changedBy: order.createdByUser
+      }
+    ]
+
+    return {
+      order,
+      statusHistory,
+      paymentHistory: order.payments
+    }
   }
 } 
