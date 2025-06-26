@@ -1,0 +1,199 @@
+import { PrismaClient } from '@/generated/prisma'
+import { BaseRepository } from '../base/baseRepository'
+import { 
+  ICustomerRepository, 
+  CreateCustomerDTO, 
+  UpdateCustomerDTO, 
+  CustomerFilters 
+} from '../interfaces/customerRepository'
+import { Customer } from '@/types'
+
+export class CustomerRepository extends BaseRepository<Customer, CreateCustomerDTO, UpdateCustomerDTO, CustomerFilters> 
+  implements ICustomerRepository {
+  
+  constructor(prisma: PrismaClient) {
+    super(prisma, 'customer')
+  }
+
+  protected getIncludeRelations() {
+    return {
+      createdByUser: {
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      },
+      orders: true,
+      invoices: true
+    }
+  }
+
+  protected buildWhereClause(filters?: CustomerFilters) {
+    const where: any = {}
+
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+        { company: { contains: filters.search, mode: 'insensitive' } },
+        { phone: { contains: filters.search, mode: 'insensitive' } }
+      ]
+    }
+
+    if (filters?.company) {
+      where.company = { contains: filters.company, mode: 'insensitive' }
+    }
+
+    if (filters?.isActive !== undefined) {
+      where.isActive = filters.isActive
+    }
+
+    if (filters?.email) {
+      where.email = filters.email
+    }
+
+    if (filters?.createdBy) {
+      where.createdBy = filters.createdBy
+    }
+
+    return where
+  }
+
+  async findByEmail(email: string): Promise<Customer | undefined> {
+    try {
+      const customer = await this.prisma.customer.findFirst({
+        where: { email },
+        include: this.getIncludeRelations()
+      })
+      return customer
+    } catch (error) {
+      throw new Error(`Error finding customer by email: ${error}`)
+    }
+  }
+
+  async findByCompany(company: string): Promise<Customer[]> {
+    try {
+      const customers = await this.prisma.customer.findMany({
+        where: { 
+          company: { contains: company, mode: 'insensitive' } 
+        },
+        include: this.getIncludeRelations()
+      })
+      return customers
+    } catch (error) {
+      throw new Error(`Error finding customers by company: ${error}`)
+    }
+  }
+
+  async findByTaxNumber(taxNumber: string): Promise<Customer | null> {
+    try {
+      const customer = await this.prisma.customer.findFirst({
+        where: { taxNumber },
+        include: this.getIncludeRelations()
+      })
+      return customer
+    } catch (error) {
+      throw new Error(`Error finding customer by tax number: ${error}`)
+    }
+  }
+
+  async getCustomerStats(): Promise<{
+    total: number
+    active: number
+    inactive: number
+  }> {
+    try {
+      const [total, active] = await Promise.all([
+        this.prisma.customer.count(),
+        this.prisma.customer.count({ where: { isActive: true } })
+      ])
+
+      return {
+        total,
+        active,
+        inactive: total - active
+      }
+    } catch (error) {
+      throw new Error(`Error getting customer stats: ${error}`)
+    }
+  }
+
+  async getCustomerHistory(customerId: string): Promise<{
+    orders: Array<{
+      id: string
+      orderNumber: string
+      status: string
+      totalAmount: number
+      orderDate: Date
+    }>
+    invoices: Array<{
+      id: string
+      invoiceNumber: string
+      status: string
+      amount: number
+      dueDate: Date
+    }>
+    payments: Array<{
+      id: string
+      amount: number
+      method: string
+      status: string
+      paymentDate: Date
+    }>
+  }> {
+    try {
+      const [orders, invoices, payments] = await Promise.all([
+        this.prisma.order.findMany({
+          where: { customerId },
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            totalAmount: true,
+            orderDate: true
+          },
+          orderBy: { orderDate: 'desc' }
+        }),
+        this.prisma.invoice.findMany({
+          where: { customerId },
+          select: {
+            id: true,
+            invoiceNumber: true,
+            status: true,
+            totalAmount: true,
+            dueDate: true
+          },
+          orderBy: { issueDate: 'desc' }
+        }),
+        this.prisma.payment.findMany({
+          where: {
+            order: { customerId }
+          },
+          select: {
+            id: true,
+            amount: true,
+            method: true,
+            status: true,
+            paymentDate: true
+          },
+          orderBy: { paymentDate: 'desc' }
+        })
+      ])
+
+      return {
+        orders: orders.map(order => ({
+          ...order,
+          amount: order.totalAmount
+        })),
+        invoices: invoices.map(invoice => ({
+          ...invoice,
+          amount: invoice.totalAmount
+        })),
+        payments
+      }
+    } catch (error) {
+      throw new Error(`Error getting customer history: ${error}`)
+    }
+  }
+} 

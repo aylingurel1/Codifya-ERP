@@ -1,6 +1,7 @@
-import { prisma } from '@/lib/prisma'
 import { hashPassword, comparePassword, generateToken } from '@/utils/auth'
 import { CreateUserRequest, User } from '@/types'
+import { RepositoryFactory } from '@/repositories'
+import { prisma } from '@/lib/prisma'
 
 export interface LoginRequest {
   email: string
@@ -13,10 +14,15 @@ export interface LoginResponse {
 }
 
 export class AuthService {
+  private userRepository: any
+
+  constructor() {
+    const repositoryFactory = RepositoryFactory.getInstance(prisma)
+    this.userRepository = repositoryFactory.getUserRepository()
+  }
+
   async register(userData: CreateUserRequest): Promise<Omit<User, 'password'>> {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: userData.email }
-    })
+    const existingUser = await this.userRepository.findByEmail(userData.email)
 
     if (existingUser) {
       throw new Error('User already exists')
@@ -24,24 +30,19 @@ export class AuthService {
 
     const hashedPassword = await hashPassword(userData.password)
 
-    const user = await prisma.user.create({
-      data: {
-        email: userData.email,
-        password: hashedPassword,
-        name: userData.name,
-        role: userData.role || 'USER'
-      }
+    const user = await this.userRepository.create({
+      email: userData.email,
+      password: hashedPassword,
+      name: userData.name,
+      role: userData.role || 'USER'
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user
     return userWithoutPassword
   }
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const user = await prisma.user.findUnique({
-      where: { email: credentials.email }
-    })
+    const user = await this.userRepository.findByEmail(credentials.email)
 
     if (!user || !user.isActive) {
       throw new Error('Invalid credentials')
@@ -58,7 +59,6 @@ export class AuthService {
       role: user.role
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user
 
     return {
@@ -68,40 +68,30 @@ export class AuthService {
   }
 
   async getUserById(userId: string): Promise<Omit<User, 'password'> | null> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
+    const user = await this.userRepository.findById(userId)
 
     if (!user) {
       return null
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user
     return userWithoutPassword
   }
 
   async updateUser(userId: string, updateData: Partial<CreateUserRequest>): Promise<Omit<User, 'password'>> {
-    const updatePayload: Partial<CreateUserRequest> = { ...updateData }
+    const updatePayload: any = { ...updateData }
     
     if (updateData.password) {
       updatePayload.password = await hashPassword(updateData.password)
     }
 
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: updatePayload
-    })
+    const user = await this.userRepository.update(userId, updatePayload)
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user
     return userWithoutPassword
   }
 
   async deactivateUser(userId: string): Promise<void> {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { isActive: false }
-    })
+    await this.userRepository.deactivateUser(userId)
   }
 } 

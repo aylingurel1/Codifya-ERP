@@ -33,20 +33,34 @@ export interface CreateUserRequest {
   role?: 'ADMIN' | 'MANAGER' | 'USER';
 }
 
+// Kategori tipi
+export interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  parentId: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  products?: Product[];
+}
+
 // Müşteri tipleri
 export interface Customer {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  company?: string;
-  taxNumber?: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  company: string | null;
+  taxNumber: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
   createdByUser: User;
+  orders?: Order[];
+  invoices?: Invoice[];
 }
 
 export interface CreateCustomerRequest {
@@ -62,13 +76,13 @@ export interface CreateCustomerRequest {
 export interface Product {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   sku: string;
   price: number;
   cost: number;
   stock: number;
   minStock: number;
-  category?: string;
+  category: Category | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -97,7 +111,7 @@ export interface Order {
   totalAmount: number;
   taxAmount: number;
   discount: number;
-  notes?: string;
+  notes: string | null;
   orderDate: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -105,6 +119,7 @@ export interface Order {
   createdByUser: User;
   items: OrderItem[];
   payments: Payment[];
+  invoices?: Invoice[];
 }
 
 export interface OrderItem {
@@ -133,10 +148,11 @@ export interface CreateOrderItemRequest {
 export interface Payment {
   id: string;
   orderId: string;
+  order?: Order;
   amount: number;
   method: 'CASH' | 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CHECK';
   status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
-  reference?: string;
+  reference: string | null;
   paymentDate: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -147,4 +163,28 @@ export interface CreatePaymentRequest {
   amount: number;
   method: 'CASH' | 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CHECK';
   reference?: string;
+}
+
+// Fatura tipleri
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  orderId?: string | null;
+  order?: Order | null;
+  customerId?: string | null;
+  customer?: Customer | null;
+  type: 'SALES' | 'PURCHASE' | 'EXPENSE';
+  status: 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED';
+  subtotal: number;
+  taxAmount: number;
+  discount: number;
+  totalAmount: number;
+  dueDate: Date;
+  issueDate: Date;
+  paidDate?: Date | null;
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  createdByUser: User;
 } 
