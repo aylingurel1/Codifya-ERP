@@ -30,9 +30,9 @@ export interface CustomerFilters {
 }
 
 export interface ICustomerRepository extends IBaseRepository<Customer, CreateCustomerDTO, UpdateCustomerDTO, CustomerFilters> {
-  findByEmail(email: string): Promise<Customer | undefined>
+  findByEmail(email: string): Promise<Customer | null>
   findByCompany(company: string): Promise<Customer[]>
-  findByTaxNumber(taxNumber: string): Promise<Customer | undefined>
+  findByTaxNumber(taxNumber: string): Promise<Customer | null>
   getCustomerStats(): Promise<{
     total: number
     active: number

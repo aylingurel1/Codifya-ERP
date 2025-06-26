@@ -1,9 +1,7 @@
 import { NextRequest } from 'next/server'
-import { CustomerService } from '@/modules/crm/services/customerService'
 import { successResponse, errorResponse, notFoundResponse } from '@/utils/api'
 import { requireManager, AuthenticatedRequest } from '@/lib/auth'
-
-const customerService = new CustomerService()
+import { ServiceProvider } from '@/utils/serviceProvider'
 
 // GET - Müşteri geçmişi
 async function handleGet(request: AuthenticatedRequest) {
@@ -13,6 +11,7 @@ async function handleGet(request: AuthenticatedRequest) {
       return notFoundResponse()
     }
 
+    const customerService = ServiceProvider.getCustomerService()
     const history = await customerService.getCustomerHistory(id)
     return successResponse(history, 'Müşteri geçmişi getirildi')
   } catch (error) {

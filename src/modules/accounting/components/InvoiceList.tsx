@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Pagination } from '@/components/ui/pagination'
+import React, { useState, useEffect, ChangeEvent, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Input } from '../../../components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
+import { Pagination } from '../../../components/ui/pagination'
 import { 
   Plus, 
   Search, 
@@ -33,14 +33,21 @@ interface InvoiceListProps {
   onCreate?: () => void
 }
 
-const statusColors = {
+const statusColors: Record<InvoiceStatus, string> = {
   DRAFT: 'bg-gray-100 text-gray-800',
   SENT: 'bg-blue-100 text-blue-800',
   PAID: 'bg-green-100 text-green-800',
   CANCELLED: 'bg-red-100 text-red-800'
 }
 
-const typeLabels = {
+const statusLabels: Record<InvoiceStatus, string> = {
+  DRAFT: 'Taslak',
+  SENT: 'Gönderildi',
+  PAID: 'Ödendi',
+  CANCELLED: 'İptal'
+}
+
+const typeLabels: Record<InvoiceType, string> = {
   SALES: 'Satış',
   PURCHASE: 'Alış',
   EXPENSE: 'Gider'
@@ -68,13 +75,24 @@ export default function InvoiceList({
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('')
   const [typeFilter, setTypeFilter] = useState<InvoiceType | ''>('')
 
+  // Debounced search için
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   useEffect(() => {
     const newFilters: InvoiceFilters = {
       page: 1,
       limit: 10
     }
 
-    if (searchTerm) {
+    if (debouncedSearchTerm) {
       // Arama için customer name veya invoice number kullanılabilir
       // Bu örnekte basit bir filtreleme yapıyoruz
     }
@@ -89,25 +107,37 @@ export default function InvoiceList({
 
     setFilters(newFilters)
     onFiltersChange?.(newFilters)
-  }, [searchTerm, statusFilter, typeFilter, onFiltersChange])
+  }, [debouncedSearchTerm, statusFilter, typeFilter, onFiltersChange])
 
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     const newFilters = { ...filters, page: newPage }
     setFilters(newFilters)
     onPageChange?.(newPage)
     onFiltersChange?.(newFilters)
-  }
+  }, [filters, onPageChange, onFiltersChange])
 
-  const formatDate = (date: Date | string) => {
+  const formatDate = useCallback((date: Date | string) => {
     return new Date(date).toLocaleDateString('tr-TR')
-  }
+  }, [])
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('tr-TR', {
       style: 'currency',
       currency: 'TRY'
     }).format(amount)
-  }
+  }, [])
+
+  const handleSearchChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value)
+  }, [])
+
+  const handleStatusChange = useCallback((value: string) => {
+    setStatusFilter(value as InvoiceStatus | '')
+  }, [])
+
+  const handleTypeChange = useCallback((value: string) => {
+    setTypeFilter(value as InvoiceType | '')
+  }, [])
 
   if (loading) {
     return (
@@ -158,32 +188,35 @@ export default function InvoiceList({
               <Input
                 placeholder="Fatura ara..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
                 className="pl-10"
               />
             </div>
           </div>
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as InvoiceStatus | '')}>
+          <Select value={statusFilter} onChange={handleStatusChange}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Durum" />
+              <SelectValue>Durum</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">Tümü</SelectItem>
-              <SelectItem value="DRAFT">Taslak</SelectItem>
-              <SelectItem value="SENT">Gönderildi</SelectItem>
-              <SelectItem value="PAID">Ödendi</SelectItem>
-              <SelectItem value="CANCELLED">İptal</SelectItem>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as InvoiceType | '')}>
+          <Select value={typeFilter} onChange={handleTypeChange}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Tür" />
+              <SelectValue>Tür</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">Tümü</SelectItem>
-              <SelectItem value="SALES">Satış</SelectItem>
-              <SelectItem value="PURCHASE">Alış</SelectItem>
-              <SelectItem value="EXPENSE">Gider</SelectItem>
+              {Object.entries(typeLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -205,7 +238,7 @@ export default function InvoiceList({
             <TableBody>
               {invoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell className="text-center py-8 text-muted-foreground">
                     Fatura bulunamadı
                   </TableCell>
                 </TableRow>
@@ -223,10 +256,7 @@ export default function InvoiceList({
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColors[invoice.status]}>
-                        {invoice.status === 'DRAFT' && 'Taslak'}
-                        {invoice.status === 'SENT' && 'Gönderildi'}
-                        {invoice.status === 'PAID' && 'Ödendi'}
-                        {invoice.status === 'CANCELLED' && 'İptal'}
+                        {statusLabels[invoice.status]}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">

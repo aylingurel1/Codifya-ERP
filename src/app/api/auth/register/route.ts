@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
-import { AuthService } from '@/modules/auth/services/authService'
 import { successResponse, errorResponse } from '@/utils/api'
 import { CreateUserRequest } from '@/types'
+import { ServiceProvider } from '@/utils/serviceProvider'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       return errorResponse('Password must be at least 6 characters long')
     }
 
-    const authService = new AuthService()
+    const authService = ServiceProvider.getAuthService()
     const user = await authService.register(body)
 
     return successResponse(user, 'User registered successfully')

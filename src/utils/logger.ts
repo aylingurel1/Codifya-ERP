@@ -15,7 +15,14 @@ export interface LogEntry {
   requestId?: string
 }
 
-class Logger {
+export type ILogger = {
+  error(message: string, context?: Record<string, any>): void
+  warn(message: string, context?: Record<string, any>): void
+  info(message: string, context?: Record<string, any>): void
+  debug(message: string, context?: Record<string, any>): void
+}
+
+export class Logger implements ILogger {
   private isDevelopment = process.env.NODE_ENV === 'development'
 
   private formatLog(level: LogLevel, message: string, context?: Record<string, any>): LogEntry {
@@ -58,3 +65,5 @@ class Logger {
 }
 
 export const logger = new Logger() 
+
+export type { ILogger } 

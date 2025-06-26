@@ -6,7 +6,29 @@ import {
   UpdateCustomerDTO, 
   CustomerFilters 
 } from '../interfaces/customerRepository'
-import { Customer } from '@/types'
+import { Customer, User } from '@/types'
+
+function mapUser(user: any): User {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    password: '', // dummy
+    role: 'USER', // dummy
+    isActive: true, // dummy
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+}
+
+function mapCustomer(prismaCustomer: any): Customer {
+  return {
+    ...prismaCustomer,
+    createdByUser: prismaCustomer.createdByUser ? mapUser(prismaCustomer.createdByUser) : undefined,
+    orders: prismaCustomer.orders || [],
+    invoices: prismaCustomer.invoices || []
+  }
+}
 
 export class CustomerRepository extends BaseRepository<Customer, CreateCustomerDTO, UpdateCustomerDTO, CustomerFilters> 
   implements ICustomerRepository {
@@ -60,13 +82,13 @@ export class CustomerRepository extends BaseRepository<Customer, CreateCustomerD
     return where
   }
 
-  async findByEmail(email: string): Promise<Customer | undefined> {
+  async findByEmail(email: string): Promise<Customer | null> {
     try {
       const customer = await this.prisma.customer.findFirst({
         where: { email },
         include: this.getIncludeRelations()
       })
-      return customer
+      return customer ? mapCustomer(customer) : null
     } catch (error) {
       throw new Error(`Error finding customer by email: ${error}`)
     }
@@ -76,11 +98,11 @@ export class CustomerRepository extends BaseRepository<Customer, CreateCustomerD
     try {
       const customers = await this.prisma.customer.findMany({
         where: { 
-          company: { contains: company, mode: 'insensitive' } 
+          company: { contains: company } 
         },
         include: this.getIncludeRelations()
       })
-      return customers
+      return customers.map(mapCustomer)
     } catch (error) {
       throw new Error(`Error finding customers by company: ${error}`)
     }
@@ -92,7 +114,7 @@ export class CustomerRepository extends BaseRepository<Customer, CreateCustomerD
         where: { taxNumber },
         include: this.getIncludeRelations()
       })
-      return customer
+      return customer ? mapCustomer(customer) : null
     } catch (error) {
       throw new Error(`Error finding customer by tax number: ${error}`)
     }

@@ -1,6 +1,7 @@
 import { hashPassword, comparePassword, generateToken } from '@/utils/auth'
 import { CreateUserRequest, User } from '@/types'
-import { RepositoryFactory } from '@/repositories'
+import { UserRepository } from '@/repositories/implementations/userRepository'
+import { Logger } from '@/utils/logger'
 import { prisma } from '@/lib/prisma'
 
 export interface LoginRequest {
@@ -13,12 +14,25 @@ export interface LoginResponse {
   token: string
 }
 
-export class AuthService {
-  private userRepository: any
+export interface IAuthService {
+  register(userData: CreateUserRequest): Promise<Omit<User, 'password'>>
+  login(credentials: LoginRequest): Promise<LoginResponse>
+  validateToken(token: string): Promise<User | null>
+  changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void>
+  deactivateUser(userId: string): Promise<void>
+}
 
-  constructor() {
-    const repositoryFactory = RepositoryFactory.getInstance(prisma)
-    this.userRepository = repositoryFactory.getUserRepository()
+export class AuthService implements IAuthService {
+  constructor(
+    private userRepository: UserRepository,
+    private logger: Logger
+  ) {}
+
+  // Factory method
+  static create(): IAuthService {
+    const userRepository = new UserRepository(prisma)
+    const logger = new Logger()
+    return new AuthService(userRepository, logger)
   }
 
   async register(userData: CreateUserRequest): Promise<Omit<User, 'password'>> {
@@ -44,13 +58,18 @@ export class AuthService {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const user = await this.userRepository.findByEmail(credentials.email)
 
-    if (!user || !user.isActive) {
+    if (!user) {
       throw new Error('Invalid credentials')
     }
 
     const isValidPassword = await comparePassword(credentials.password, user.password)
+
     if (!isValidPassword) {
       throw new Error('Invalid credentials')
+    }
+
+    if (!user.isActive) {
+      throw new Error('User account is deactivated')
     }
 
     const token = generateToken({
@@ -67,28 +86,31 @@ export class AuthService {
     }
   }
 
-  async getUserById(userId: string): Promise<Omit<User, 'password'> | null> {
+  async validateToken(token: string): Promise<User | null> {
+    try {
+      // Token validation logic here
+      // This would typically decode and verify the JWT token
+      return null
+    } catch (error) {
+      return null
+    }
+  }
+
+  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
     const user = await this.userRepository.findById(userId)
 
     if (!user) {
-      return null
+      throw new Error('User not found')
     }
 
-    const { password, ...userWithoutPassword } = user
-    return userWithoutPassword
-  }
+    const isValidPassword = await comparePassword(oldPassword, user.password)
 
-  async updateUser(userId: string, updateData: Partial<CreateUserRequest>): Promise<Omit<User, 'password'>> {
-    const updatePayload: any = { ...updateData }
-    
-    if (updateData.password) {
-      updatePayload.password = await hashPassword(updateData.password)
+    if (!isValidPassword) {
+      throw new Error('Invalid old password')
     }
 
-    const user = await this.userRepository.update(userId, updatePayload)
-
-    const { password, ...userWithoutPassword } = user
-    return userWithoutPassword
+    const hashedNewPassword = await hashPassword(newPassword)
+    await this.userRepository.updatePassword(userId, hashedNewPassword)
   }
 
   async deactivateUser(userId: string): Promise<void> {

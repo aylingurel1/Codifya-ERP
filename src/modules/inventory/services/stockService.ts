@@ -1,6 +1,47 @@
 import { prisma } from '@/lib/prisma'
 import { CreateStockMovementRequest, StockMovement } from '../types'
 import { PrismaClient } from '@prisma/client'
+import { Product, User } from '@/types'
+
+function mapUser(user: any): User {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    password: '',
+    role: 'USER',
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+}
+
+function mapProduct(prismaProduct: any): Product {
+  return {
+    id: prismaProduct.id,
+    name: prismaProduct.name,
+    description: prismaProduct.description || undefined,
+    sku: prismaProduct.sku,
+    price: prismaProduct.price,
+    cost: prismaProduct.cost,
+    stock: prismaProduct.stock,
+    minStock: prismaProduct.minStock,
+    category: prismaProduct.category || null,
+    isActive: prismaProduct.isActive,
+    createdAt: prismaProduct.createdAt,
+    updatedAt: prismaProduct.updatedAt,
+    createdBy: prismaProduct.createdBy,
+    createdByUser: prismaProduct.createdByUser ? mapUser(prismaProduct.createdByUser) : undefined
+  }
+}
+
+function mapStockMovement(movement: any): StockMovement {
+  return {
+    ...movement,
+    product: movement.product ? mapProduct(movement.product) : undefined,
+    createdByUser: movement.createdByUser ? mapUser(movement.createdByUser) : undefined
+  }
+}
 
 export class StockService {
   async addStockMovement(data: CreateStockMovementRequest, createdBy: string): Promise<StockMovement> {
@@ -67,7 +108,7 @@ export class StockService {
       return stockMovement
     })
 
-    return result
+    return mapStockMovement(result)
   }
 
   async getStockMovements(productId?: string, page: number = 1, limit: number = 20) {
@@ -82,7 +123,17 @@ export class StockService {
             select: {
               id: true,
               name: true,
-              sku: true
+              sku: true,
+              price: true,
+              cost: true,
+              stock: true,
+              minStock: true,
+              description: true,
+              isActive: true,
+              createdAt: true,
+              updatedAt: true,
+              createdBy: true,
+              category: true
             }
           },
           createdByUser: {
@@ -101,7 +152,7 @@ export class StockService {
     ])
 
     return {
-      movements,
+      movements: movements.map(mapStockMovement),
       total,
       page,
       limit,
@@ -128,7 +179,7 @@ export class StockService {
       throw new Error('Stok hareketi bulunamadı')
     }
 
-    return movement
+    return mapStockMovement(movement)
   }
 
   async getProductStockHistory(productId: string) {

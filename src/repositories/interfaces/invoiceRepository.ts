@@ -6,8 +6,8 @@ export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED'
 export interface Invoice {
   id: string
   invoiceNumber: string
-  orderId?: string
-  customerId?: string
+  orderId?: string | null
+  customerId?: string | null
   type: InvoiceType
   status: InvoiceStatus
   subtotal: number
@@ -16,8 +16,8 @@ export interface Invoice {
   totalAmount: number
   dueDate: Date
   issueDate: Date
-  paidDate?: Date
-  notes?: string
+  paidDate?: Date | null
+  notes?: string | null
   createdAt: Date
   updatedAt: Date
   createdBy: string
@@ -25,8 +25,8 @@ export interface Invoice {
 
 export interface CreateInvoiceDTO {
   invoiceNumber: string
-  orderId?: string
-  customerId?: string
+  orderId?: string | null
+  customerId?: string | null
   type: InvoiceType
   status: InvoiceStatus
   subtotal: number
@@ -34,7 +34,7 @@ export interface CreateInvoiceDTO {
   discount: number
   totalAmount: number
   dueDate: Date
-  notes?: string
+  notes?: string | null
   createdBy: string
 }
 
@@ -45,8 +45,8 @@ export interface UpdateInvoiceDTO {
   discount?: number
   totalAmount?: number
   dueDate?: Date
-  notes?: string
-  paidDate?: Date
+  notes?: string | null
+  paidDate?: Date | null
 }
 
 export interface InvoiceFilters {

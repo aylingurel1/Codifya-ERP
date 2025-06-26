@@ -5,8 +5,61 @@ import {
   ProductFilters, 
   ProductListResponse 
 } from '../types'
+import { Product, User } from '@/types'
 
-export class ProductService {
+// Prisma'dan dönen veriyi User tipine uygun şekilde map'le
+function mapUser(user: any): User {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    password: '', // dummy
+    role: 'USER', // dummy
+    isActive: true, // dummy
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+}
+
+// Prisma'dan dönen veriyi Product tipine uygun şekilde map'le
+function mapProduct(prismaProduct: any): Product {
+  return {
+    id: prismaProduct.id,
+    name: prismaProduct.name,
+    description: prismaProduct.description || undefined, // null -> undefined
+    sku: prismaProduct.sku,
+    price: prismaProduct.price,
+    cost: prismaProduct.cost,
+    stock: prismaProduct.stock,
+    minStock: prismaProduct.minStock,
+    category: prismaProduct.category ? {
+      id: prismaProduct.category.id,
+      name: prismaProduct.category.name,
+      description: prismaProduct.category.description || undefined,
+      parentId: prismaProduct.category.parentId || undefined,
+      isActive: prismaProduct.category.isActive,
+      createdAt: prismaProduct.category.createdAt,
+      updatedAt: prismaProduct.category.updatedAt
+    } : null,
+    isActive: prismaProduct.isActive,
+    createdAt: prismaProduct.createdAt,
+    updatedAt: prismaProduct.updatedAt,
+    createdBy: prismaProduct.createdBy,
+    createdByUser: prismaProduct.createdByUser ? mapUser(prismaProduct.createdByUser) : undefined
+  }
+}
+
+export interface IProductService {
+  createProduct(data: CreateProductRequest, createdBy: string): Promise<any>
+  getProductById(id: string): Promise<any>
+  updateProduct(id: string, data: UpdateProductRequest): Promise<any>
+  deleteProduct(id: string): Promise<any>
+  getProducts(filters: ProductFilters): Promise<ProductListResponse>
+  getLowStockProducts(): Promise<any[]>
+  updateStock(productId: string, newStock: number): Promise<any>
+}
+
+export class ProductService implements IProductService {
   async createProduct(data: CreateProductRequest, createdBy: string) {
     // SKU benzersizlik kontrolü
     const existingProduct = await prisma.product.findUnique({
@@ -17,9 +70,21 @@ export class ProductService {
       throw new Error('Bu SKU zaten kullanılıyor')
     }
 
+    // Kategori kontrolü
+    if (data.categoryId) {
+      const category = await prisma.category.findUnique({
+        where: { id: data.categoryId }
+      })
+
+      if (!category) {
+        throw new Error('Kategori bulunamadı')
+      }
+    }
+
     const product = await prisma.product.create({
       data: {
         ...data,
+        categoryId: data.categoryId,
         createdBy
       },
       include: {
@@ -34,7 +99,7 @@ export class ProductService {
       }
     })
 
-    return product
+    return mapProduct(product)
   }
 
   async getProductById(id: string) {
@@ -56,7 +121,7 @@ export class ProductService {
       throw new Error('Ürün bulunamadı')
     }
 
-    return product
+    return mapProduct(product)
   }
 
   async updateProduct(id: string, data: UpdateProductRequest) {
@@ -95,7 +160,7 @@ export class ProductService {
       }
     })
 
-    return product
+    return mapProduct(product)
   }
 
   async deleteProduct(id: string) {
@@ -176,7 +241,7 @@ export class ProductService {
     const total = await prisma.product.count({ where })
 
     // Ürünler
-    const products = await prisma.product.findMany({
+    const rawProducts = await prisma.product.findMany({
       where,
       include: {
         category: true,
@@ -193,6 +258,8 @@ export class ProductService {
       orderBy: { createdAt: 'desc' }
     })
 
+    const products = rawProducts.map(mapProduct)
+
     return {
       products,
       total,
@@ -203,7 +270,7 @@ export class ProductService {
   }
 
   async getLowStockProducts() {
-    return prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: {
         stock: {
           lte: prisma.product.fields.minStock
@@ -215,6 +282,8 @@ export class ProductService {
       },
       orderBy: { stock: 'asc' }
     })
+
+    return products.map(mapProduct)
   }
 
   async updateStock(productId: string, newStock: number) {
@@ -226,12 +295,14 @@ export class ProductService {
       throw new Error('Ürün bulunamadı')
     }
 
-    return prisma.product.update({
+    const updatedProduct = await prisma.product.update({
       where: { id: productId },
       data: { stock: newStock },
       include: {
         category: true
       }
     })
+
+    return mapProduct(updatedProduct)
   }
 } 

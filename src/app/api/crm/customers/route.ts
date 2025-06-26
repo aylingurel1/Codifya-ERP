@@ -1,28 +1,29 @@
 import { NextRequest } from 'next/server'
-import { CustomerService } from '@/modules/crm/services/customerService'
-import { successResponse, errorResponse, createPaginationMeta } from '@/utils/api'
+import { successResponse, errorResponse } from '@/utils/api'
 import { requireManager, AuthenticatedRequest } from '@/lib/auth'
-import { CreateCustomerRequest, CustomerFilters } from '@/modules/crm/types'
-
-const customerService = new CustomerService()
+import { CreateCustomerRequest } from '@/modules/crm/types'
+import { ServiceProvider } from '@/utils/serviceProvider'
 
 // GET - Müşteri listesi
 async function handleGet(request: AuthenticatedRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    
-    const filters: CustomerFilters = {
-      search: searchParams.get('search') || undefined,
-      company: searchParams.get('company') || undefined,
-      isActive: searchParams.get('isActive') ? searchParams.get('isActive') === 'true' : undefined,
-      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10
-    }
+    const { searchParams } = request.nextUrl
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const search = searchParams.get('search') || undefined
+    const company = searchParams.get('company') || undefined
+    const isActive = searchParams.get('isActive') ? searchParams.get('isActive') === 'true' : undefined
 
-    const result = await customerService.getCustomers(filters)
-    const meta = createPaginationMeta(result.page, result.limit, result.total)
-    
-    return successResponse(result.customers, 'Müşteriler listelendi', meta)
+    const customerService = ServiceProvider.getCustomerService()
+    const result = await customerService.getCustomers({
+      page,
+      limit,
+      search,
+      company,
+      isActive
+    })
+
+    return successResponse(result, 'Müşteriler başarıyla getirildi')
   } catch (error) {
     if (error instanceof Error) {
       return errorResponse(error.message)
@@ -46,6 +47,7 @@ async function handlePost(request: AuthenticatedRequest) {
       return errorResponse('Kullanıcı doğrulanamadı', 401)
     }
     
+    const customerService = ServiceProvider.getCustomerService()
     const customer = await customerService.createCustomer(body, createdBy)
     return successResponse(customer, 'Müşteri başarıyla oluşturuldu')
   } catch (error) {

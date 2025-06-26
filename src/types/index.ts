@@ -20,6 +20,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  password: string;
   role: 'ADMIN' | 'MANAGER' | 'USER';
   isActive: boolean;
   createdAt: Date;
@@ -87,7 +88,7 @@ export interface Product {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
-  createdByUser: User;
+  createdByUser?: User;
 }
 
 export interface CreateProductRequest {

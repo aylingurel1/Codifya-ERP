@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
-import { AuthService, LoginRequest } from '@/modules/auth/services/authService'
+import { LoginRequest } from '@/modules/auth/services/authService'
 import { successResponse, errorResponse } from '@/utils/api'
+import { ServiceProvider } from '@/utils/serviceProvider'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
       return errorResponse('Email and password are required')
     }
 
-    const authService = new AuthService()
+    const authService = ServiceProvider.getAuthService()
     const result = await authService.login(body)
 
     return successResponse(result, 'Login successful')

@@ -1,10 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs'
+import { Badge } from '../../../components/ui/badge'
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -36,20 +35,8 @@ export default function AccountingDashboard({
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Yükleniyor...</CardTitle>
-                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-gray-200 rounded animate-pulse" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Yükleniyor...</div>
       </div>
     )
   }
@@ -113,14 +100,14 @@ export default function AccountingDashboard({
               {stats?.outstandingInvoices || '0'}
             </div>
             <p className="text-xs text-muted-foreground">
-              ₺{stats?.outstandingInvoices ? '0' : '0'} toplam
+              ₺{stats?.outstandingInvoices?.toLocaleString() || '0'} toplam
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Detaylı Sekmeler */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs defaultValue={activeTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
           <TabsTrigger value="invoices">Faturalar</TabsTrigger>
@@ -211,7 +198,7 @@ export default function AccountingDashboard({
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Bekleyen</CardTitle>
-                <Badge variant="secondary">⏳</Badge>
+                <Badge variant="info">⏳</Badge>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{invoiceStats?.pendingInvoices || '0'}</div>
@@ -224,7 +211,7 @@ export default function AccountingDashboard({
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Gecikmiş</CardTitle>
-                <Badge variant="destructive">⚠</Badge>
+                <Badge variant="error">⚠</Badge>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{invoiceStats?.overdueInvoices || '0'}</div>
@@ -325,10 +312,10 @@ export default function AccountingDashboard({
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Bekleyen</CardTitle>
-                <Badge variant="secondary">⏳</Badge>
+                <Badge variant="info">⏳</Badge>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{paymentStats?.pendingPayments || '0'}</div>
+                <div className="text-2xl font-bold">{paymentStats?.pendingAmount || '0'}</div>
                 <p className="text-xs text-muted-foreground">
                   ₺{paymentStats?.pendingAmount?.toLocaleString() || '0'} toplam
                 </p>
@@ -338,7 +325,7 @@ export default function AccountingDashboard({
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Başarısız</CardTitle>
-                <Badge variant="destructive">✗</Badge>
+                <Badge variant="error">✗</Badge>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{paymentStats?.failedPayments || '0'}</div>

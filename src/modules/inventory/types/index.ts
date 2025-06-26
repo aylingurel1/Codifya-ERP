@@ -9,6 +9,12 @@ export interface Category {
   isActive: boolean
   createdAt: Date
   updatedAt: Date
+  parent?: Category
+  children?: Category[]
+  products?: Product[]
+  _count?: {
+    products: number
+  }
 }
 
 // Ürün oluşturma isteği

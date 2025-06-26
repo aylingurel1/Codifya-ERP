@@ -1,10 +1,8 @@
 import { NextRequest } from 'next/server'
-import { CustomerService } from '@/modules/crm/services/customerService'
 import { successResponse, errorResponse, notFoundResponse } from '@/utils/api'
 import { requireManager, AuthenticatedRequest } from '@/lib/auth'
 import { UpdateCustomerRequest } from '@/modules/crm/types'
-
-const customerService = new CustomerService()
+import { ServiceProvider } from '@/utils/serviceProvider'
 
 // GET - Müşteri detayı
 async function handleGet(request: AuthenticatedRequest) {
@@ -14,6 +12,7 @@ async function handleGet(request: AuthenticatedRequest) {
       return notFoundResponse()
     }
 
+    const customerService = ServiceProvider.getCustomerService()
     const customer = await customerService.getCustomerById(id)
     return successResponse(customer, 'Müşteri detayı getirildi')
   } catch (error) {
@@ -43,6 +42,7 @@ async function handlePut(request: AuthenticatedRequest) {
       return errorResponse('En az bir alan güncellenmelidir')
     }
 
+    const customerService = ServiceProvider.getCustomerService()
     const customer = await customerService.updateCustomer(id, body)
     return successResponse(customer, 'Müşteri başarıyla güncellendi')
   } catch (error) {
@@ -64,8 +64,9 @@ async function handleDelete(request: AuthenticatedRequest) {
       return notFoundResponse()
     }
 
-    const result = await customerService.deleteCustomer(id)
-    return successResponse(result, 'Müşteri başarıyla silindi')
+    const customerService = ServiceProvider.getCustomerService()
+    await customerService.deleteCustomer(id)
+    return successResponse({}, 'Müşteri başarıyla silindi')
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'Müşteri bulunamadı') {

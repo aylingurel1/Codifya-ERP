@@ -1,13 +1,12 @@
 import { NextRequest } from 'next/server'
-import { CustomerService } from '@/modules/crm/services/customerService'
 import { successResponse, errorResponse } from '@/utils/api'
 import { requireManager, AuthenticatedRequest } from '@/lib/auth'
-
-const customerService = new CustomerService()
+import { ServiceProvider } from '@/utils/serviceProvider'
 
 // GET - CRM Dashboard istatistikleri
 async function handleGet(request: AuthenticatedRequest) {
   try {
+    const customerService = ServiceProvider.getCustomerService()
     const stats = await customerService.getCustomerStats()
     return successResponse(stats, 'CRM dashboard verileri getirildi')
   } catch (error) {

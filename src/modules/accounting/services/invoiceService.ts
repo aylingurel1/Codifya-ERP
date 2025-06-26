@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { CreateInvoiceRequest, UpdateInvoiceRequest, InvoiceFilters, InvoiceListResponse, InvoiceStatus, InvoiceType } from '../types/invoice'
+import { CreateInvoiceRequest, UpdateInvoiceRequest, InvoiceFilters, InvoiceListResponse, InvoiceStatus, InvoiceType, Invoice } from '../types/invoice'
 import { InvoiceStats } from '../types'
 import { logger } from '@/utils/logger'
 
@@ -166,7 +166,7 @@ export class InvoiceService {
     }
 
     const total = await prisma.invoice.count({ where })
-    const invoices = await prisma.invoice.findMany({
+    const rawInvoices = await prisma.invoice.findMany({
       where,
       include: {
         order: {
@@ -182,6 +182,29 @@ export class InvoiceService {
       take: limit,
       orderBy: { createdAt: 'desc' }
     })
+
+    // Tip dönüşümü - Prisma verilerini Invoice tipine uygun hale getir
+    const invoices: Invoice[] = rawInvoices.map(invoice => ({
+      id: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      orderId: invoice.orderId,
+      customerId: invoice.customerId,
+      customer: invoice.customer,
+      type: invoice.type,
+      status: invoice.status,
+      subtotal: invoice.subtotal,
+      taxAmount: invoice.taxAmount,
+      discount: invoice.discount,
+      totalAmount: invoice.totalAmount,
+      dueDate: invoice.dueDate,
+      issueDate: invoice.issueDate,
+      paidDate: invoice.paidDate || undefined, // null -> undefined
+      notes: invoice.notes || undefined, // null -> undefined
+      createdAt: invoice.createdAt,
+      updatedAt: invoice.updatedAt,
+      createdBy: invoice.createdBy,
+      createdByUser: invoice.createdByUser
+    }))
 
     return {
       invoices,

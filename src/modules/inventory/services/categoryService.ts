@@ -1,6 +1,42 @@
 import { prisma } from '@/lib/prisma'
 import { CreateCategoryRequest, UpdateCategoryRequest, Category } from '../types'
 
+// Prisma'dan dönen veriyi Category tipine uygun şekilde map'le
+function mapCategory(prismaCategory: any): Category {
+  return {
+    id: prismaCategory.id,
+    name: prismaCategory.name,
+    description: prismaCategory.description || undefined, // null -> undefined
+    parentId: prismaCategory.parentId || undefined, // null -> undefined
+    isActive: prismaCategory.isActive,
+    createdAt: prismaCategory.createdAt,
+    updatedAt: prismaCategory.updatedAt
+  }
+}
+
+// Nested kategoriler için recursive mapping
+function mapCategoryWithRelations(prismaCategory: any): Category {
+  const category = mapCategory(prismaCategory)
+  
+  if (prismaCategory.parent) {
+    category.parent = mapCategory(prismaCategory.parent)
+  }
+  
+  if (prismaCategory.children) {
+    category.children = prismaCategory.children.map(mapCategoryWithRelations)
+  }
+  
+  if (prismaCategory.products) {
+    category.products = prismaCategory.products
+  }
+  
+  if (prismaCategory._count) {
+    category._count = prismaCategory._count
+  }
+  
+  return category
+}
+
 export class CategoryService {
   async createCategory(data: CreateCategoryRequest): Promise<Category> {
     // Kategori adı benzersizlik kontrolü
@@ -34,7 +70,7 @@ export class CategoryService {
       }
     })
 
-    return category
+    return mapCategoryWithRelations(category)
   }
 
   async getCategoryById(id: string): Promise<Category> {
@@ -57,7 +93,7 @@ export class CategoryService {
       throw new Error('Kategori bulunamadı')
     }
 
-    return category
+    return mapCategoryWithRelations(category)
   }
 
   async updateCategory(id: string, data: UpdateCategoryRequest): Promise<Category> {
@@ -110,7 +146,7 @@ export class CategoryService {
       }
     })
 
-    return category
+    return mapCategoryWithRelations(category)
   }
 
   async deleteCategory(id: string): Promise<{ message: string }> {
@@ -144,7 +180,7 @@ export class CategoryService {
   }
 
   async getAllCategories(): Promise<Category[]> {
-    return prisma.category.findMany({
+    const categories = await prisma.category.findMany({
       where: { isActive: true },
       include: {
         parent: true,
@@ -157,10 +193,12 @@ export class CategoryService {
       },
       orderBy: { name: 'asc' }
     })
+
+    return categories.map(mapCategoryWithRelations)
   }
 
   async getCategoryTree(): Promise<Category[]> {
-    return prisma.category.findMany({
+    const categories = await prisma.category.findMany({
       where: { 
         isActive: true,
         parentId: null // Sadece ana kategoriler
@@ -177,10 +215,12 @@ export class CategoryService {
       },
       orderBy: { name: 'asc' }
     })
+
+    return categories.map(mapCategoryWithRelations)
   }
 
   async getCategoriesWithProductCount(): Promise<Category[]> {
-    return prisma.category.findMany({
+    const categories = await prisma.category.findMany({
       where: { isActive: true },
       include: {
         _count: {
@@ -191,5 +231,7 @@ export class CategoryService {
       },
       orderBy: { name: 'asc' }
     })
+
+    return categories.map(mapCategoryWithRelations)
   }
 } 
