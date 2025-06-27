@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import type { SignOptions } from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET
 const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '24h'
@@ -29,7 +30,8 @@ export const generateToken = (payload: Omit<JWTPayload, 'iat' | 'exp'>): string 
   if (!JWT_SECRET) {
     throw new Error('JWT_SECRET is not configured')
   }
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+  const options: SignOptions = { expiresIn: '24h' }
+  return jwt.sign(payload as object, JWT_SECRET, options)
 }
 
 export const verifyToken = (token: string): JWTPayload | null => {
