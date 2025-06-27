@@ -11,7 +11,7 @@ export interface Customer {
   createdAt: Date
   updatedAt: Date
   createdBy: string
-  createdByUser: {
+  createdByUser?: {
     id: string
     name: string
     email: string

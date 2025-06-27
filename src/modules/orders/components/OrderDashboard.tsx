@@ -103,29 +103,31 @@ export function OrderDashboard({ stats }: OrderDashboardProps) {
           </h3>
           <div className="space-y-4">
             {stats.topProducts.map((topProduct, index) => (
-              <div key={topProduct.product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 h-10 w-10">
-                    <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
-                      <span className="text-white font-medium">
-                        {topProduct.product.name.charAt(0).toUpperCase()}
-                      </span>
+              topProduct.product && (
+                <div key={topProduct.product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 h-10 w-10">
+                      <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <span className="text-white font-medium">
+                          {topProduct.product.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">{topProduct.product.name}</div>
+                      <div className="text-sm text-gray-500">{topProduct.product.sku}</div>
                     </div>
                   </div>
-                  <div className="ml-4">
-                    <div className="text-sm font-medium text-gray-900">{topProduct.product.name}</div>
-                    <div className="text-sm text-gray-500">{topProduct.product.sku}</div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-gray-900">
+                      {topProduct.totalQuantity} adet
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {topProduct.totalRevenue.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">
-                    {topProduct.totalQuantity} adet
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {topProduct.totalRevenue.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
-                  </div>
-                </div>
-              </div>
+              )
             ))}
           </div>
         </div>

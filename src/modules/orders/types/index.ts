@@ -15,7 +15,7 @@ export interface Customer {
   createdAt: Date
   updatedAt: Date
   createdBy: string
-  createdByUser: User
+  createdByUser?: User
 }
 
 export interface OrderItem {
@@ -37,17 +37,17 @@ export interface Order {
   id: string
   orderNumber: string
   customerId: string
-  customer: Customer
+  customer?: Customer
   status: OrderStatus
   totalAmount: number
   taxAmount: number
   discount: number
-  notes?: string
+  notes: string | null
   orderDate: Date
   createdAt: Date
   updatedAt: Date
   createdBy: string
-  createdByUser: User
+  createdByUser?: User
   items: OrderItem[]
   payments: Payment[]
 }
@@ -92,7 +92,7 @@ export interface OrderStats {
   totalRevenue: number
   averageOrderValue: number
   topProducts: Array<{
-    product: Product
+    product?: Product
     totalQuantity: number
     totalRevenue: number
   }>
@@ -108,7 +108,7 @@ export interface OrderHistory {
   statusHistory: Array<{
     status: OrderStatus
     changedAt: Date
-    changedBy: User
+    changedBy?: User
   }>
   paymentHistory: Payment[]
 } 

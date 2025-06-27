@@ -85,8 +85,8 @@ export function OrderList({ orders, onEdit, onDelete, onViewHistory, onUpdateSta
                 <div className="text-sm text-gray-500">{order.items.length} ürün</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">{order.customer.name}</div>
-                <div className="text-sm text-gray-500">{order.customer.email || '-'}</div>
+                <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Bilinmeyen'}</div>
+                <div className="text-sm text-gray-500">{order.customer?.email || '-'}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm font-medium text-gray-900">

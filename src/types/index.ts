@@ -59,7 +59,7 @@ export interface Customer {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
-  createdByUser: User;
+  createdByUser?: User;
   orders?: Order[];
   invoices?: Invoice[];
 }
@@ -107,7 +107,7 @@ export interface Order {
   id: string;
   orderNumber: string;
   customerId: string;
-  customer: Customer;
+  customer?: Customer;
   status: 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
   totalAmount: number;
   taxAmount: number;
@@ -117,7 +117,7 @@ export interface Order {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
-  createdByUser: User;
+  createdByUser?: User;
   items: OrderItem[];
   payments: Payment[];
   invoices?: Invoice[];
