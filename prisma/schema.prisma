@@ -10,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -32,6 +32,13 @@ model User {
   stockMovements StockMovement[]
   invoices  Invoice[]
   transactions Transaction[]
+  
+  // Banka modülü ilişkileri
+  bankAccountsCreated BankAccount[] @relation("BankAccountCreator")
+  bankAccountsUpdated BankAccount[] @relation("BankAccountUpdater")
+  bankTransactionsCreated BankTransaction[] @relation("BankTransactionCreator")
+  bankTransactionsApproved BankTransaction[] @relation("BankTransactionApprover")
+  bankReportsGenerated BankReporting[] @relation("BankReportGenerator")
 
   @@map("users")
 }
@@ -268,6 +275,8 @@ model Transaction {
   order       Order?              @relation(fields: [orderId], references: [id])
   paymentId   String?
   payment     Payment?            @relation(fields: [paymentId], references: [id])
+  bankAccountId String?
+  bankAccount BankAccount?        @relation(fields: [bankAccountId], references: [id])
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   createdBy   String
@@ -289,4 +298,103 @@ enum TransactionCategory {
   UTILITIES
   MARKETING
   OTHER
+}
+
+model BankAccount {
+  id              String            @id @default(uuid())
+  bankName        String
+  branch          String
+  iban            String            @unique
+  accountNumber   String
+  currency        String            @default("TL") // Para birimi 
+  balance         Float             @default(0) // Güncel bakiye
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  isActive        Boolean           @default(true)
+
+  // İlişkiler
+  transactions    BankTransaction[]
+  bankStatements  BankStatement[]
+  financialTransactions Transaction[] // Ana finansal işlemlerle bağlantı
+  
+  // User ilişkileri
+  createdBy       String?
+  createdByUser   User?            @relation("BankAccountCreator", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?            @relation("BankAccountUpdater", fields: [updatedBy], references: [id])
+}
+
+model BankTransaction {
+  id                String              @id @default(uuid())
+  type              BankTransactionType // İşlem türü: Havale, EFT, Virman, Tahsilat, Ödeme
+  amount            Float
+  currency          String              @default("TL") // Para birimi (örn: "TL", "USD")
+  description       String?             // İşlem açıklaması (isteğe bağlı)
+  transactionDate   DateTime            @default(now()) // İşlemin gerçekleştiği tarih ve saat
+  referenceNumber   String?             @unique // İşlem referans numarası (bankadan gelen)
+
+  // İlişkili banka hesabı
+  bankAccountId     String
+  bankAccount       BankAccount         @relation(fields: [bankAccountId], references: [id])
+
+  // Eğer işlem havale/EFT ise, karşı taraf bilgileri
+  targetIban        String?
+  targetAccountName String?             // Karşı taraf hesap adı/sahibi
+  targetBankName    String?             // Karşı taraf banka adı
+
+  // Onay bilgileri
+  approvedBy        String?
+  approvedByUser    User?              @relation("BankTransactionApprover", fields: [approvedBy], references: [id])
+  approvedAt        DateTime?
+  
+  // Yetki kontrolü
+  createdBy         String?
+  createdByUser     User?              @relation("BankTransactionCreator", fields: [createdBy], references: [id])
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+}
+
+// İşlem türlerini belirlemek için bir Enum
+enum BankTransactionType {
+  HAVALE
+  EFT
+  VIRMAN // Şirketin kendi hesapları arası transfer
+  TAHSILAT // Gelen para
+  ODEME // Giden para
+  DIGER
+}
+
+model BankStatement {
+  id              String      @id @default(uuid())
+  bankAccountId   String
+  bankAccount     BankAccount @relation(fields: [bankAccountId], references: [id])
+  statementDate   DateTime    // Ekstre tarihi (genellikle ekstrenin kesildiği tarih)
+  startDate       DateTime    // Ekstre başlangıç tarihi
+  endDate         DateTime    // Ekstre bitiş tarihi
+  balanceStart    Float       // Ekstre başlangıç bakiyesi
+  balanceEnd      Float       // Ekstre bitiş bakiyesi
+  statementContent Json?       // Ham ekstre verisi (JSON olarak saklanabilir)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([bankAccountId, startDate, endDate]) // Bir hesap için belirli bir tarih aralığında tek ekstre olmalı
+}
+
+model BankReporting {
+  id              String    @id @default(uuid())
+  reportName      String    // Raporun adı (örn: "Günlük Bakiye Raporu", "Aylık Hareket Raporu")
+  reportType      String    // Rapor türü (örn: "BALANCE", "TRANSACTION", "RECONCILIATION")
+  generatedDate   DateTime  @default(now()) // Raporun oluşturulduğu tarih
+  startDate       DateTime? // Raporun kapsadığı başlangıç tarihi
+  endDate         DateTime? // Raporun kapsadığı bitiş tarihi
+  reportParameters Json?     // Rapor parametreleri (JSON olarak saklanabilir)
+  reportData      Json      // Raporun çıktı verisi (JSON olarak saklanır)
+  
+  // Yetki kontrolü
+  generatedBy     String?   // Raporu oluşturan kullanıcı/sistem
+  generatedByUser User?     @relation("BankReportGenerator", fields: [generatedBy], references: [id])
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
