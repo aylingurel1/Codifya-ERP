@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -14,221 +8,162 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Kullanıcı Yönetimi
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole @default(USER)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // İlişkiler
-  orders    Order[]
-  customers Customer[]
-  products  Product[]
-  stockMovements StockMovement[]
-  invoices  Invoice[]
-  transactions Transaction[]
-  
-  // Banka modülü ilişkileri
-  bankAccountsCreated BankAccount[] @relation("BankAccountCreator")
-  bankAccountsUpdated BankAccount[] @relation("BankAccountUpdater")
-  bankTransactionsCreated BankTransaction[] @relation("BankTransactionCreator")
+  id                       String            @id @default(cuid())
+  email                    String            @unique
+  password                 String
+  name                     String
+  role                     String            @default("USER")
+  isActive                 Boolean           @default(true)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  bankAccountsUpdated      BankAccount[]     @relation("BankAccountUpdater")
+  bankAccountsCreated      BankAccount[]     @relation("BankAccountCreator")
+  bankReportsGenerated     BankReporting[]   @relation("BankReportGenerator")
+  bankTransactionsCreated  BankTransaction[] @relation("BankTransactionCreator")
   bankTransactionsApproved BankTransaction[] @relation("BankTransactionApprover")
-  bankReportsGenerated BankReporting[] @relation("BankReportGenerator")
+  customers                Customer[]
+  invoices                 Invoice[]
+  orders                   Order[]
+  products                 Product[]
+  stockMovements           StockMovement[]
+  transactions             Transaction[]
 
   @@map("users")
 }
 
-enum UserRole {
-  ADMIN
-  MANAGER
-  USER
-}
-
-// Müşteri Yönetimi (CRM)
 model Customer {
-  id          String   @id @default(cuid())
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  company     String?
-  taxNumber   String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String
-  createdByUser User   @relation(fields: [createdBy], references: [id])
-
-  // İlişkiler
-  orders      Order[]
-  invoices    Invoice[]
+  id            String    @id @default(cuid())
+  name          String
+  email         String?
+  phone         String?
+  address       String?
+  company       String?
+  taxNumber     String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String
+  createdByUser User      @relation(fields: [createdBy], references: [id])
+  invoices      Invoice[]
+  orders        Order[]
 
   @@map("customers")
 }
 
-// Ürün Kategorileri
 model Category {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   name        String
   description String?
   parentId    String?
-  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryHierarchy")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // İlişkiler
   products    Product[]
 
   @@map("categories")
 }
 
-// Ürün Yönetimi (Inventory)
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  sku         String   @unique
-  price       Float
-  cost        Float
-  stock       Int      @default(0)
-  minStock    Int      @default(0)
-  categoryId  String?
-  category    Category? @relation(fields: [categoryId], references: [id])
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String
-  createdByUser User   @relation(fields: [createdBy], references: [id])
-
-  // İlişkiler
-  orderItems  OrderItem[]
+  id             String          @id @default(cuid())
+  name           String
+  description    String?
+  sku            String          @unique
+  price          Float
+  cost           Float
+  stock          Int             @default(0)
+  minStock       Int             @default(0)
+  categoryId     String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  createdBy      String
+  orderItems     OrderItem[]
+  createdByUser  User            @relation(fields: [createdBy], references: [id])
+  category       Category?       @relation(fields: [categoryId], references: [id])
   stockMovements StockMovement[]
 
   @@map("products")
 }
 
-// Stok Hareketleri
 model StockMovement {
   id            String   @id @default(cuid())
   productId     String
-  product       Product  @relation(fields: [productId], references: [id])
-  type          StockMovementType
+  type          String
   quantity      Int
   previousStock Int
   newStock      Int
   reason        String
   reference     String?
   createdBy     String
-  createdByUser User     @relation(fields: [createdBy], references: [id])
   createdAt     DateTime @default(now())
+  createdByUser User     @relation(fields: [createdBy], references: [id])
+  product       Product  @relation(fields: [productId], references: [id])
 
   @@map("stock_movements")
 }
 
-enum StockMovementType {
-  IN
-  OUT
-  ADJUSTMENT
-}
-
-// Sipariş Yönetimi
 model Order {
-  id          String      @id @default(cuid())
-  orderNumber String      @unique
-  customerId  String
-  customer    Customer    @relation(fields: [customerId], references: [id])
-  status      OrderStatus @default(PENDING)
-  totalAmount Float
-  taxAmount   Float       @default(0)
-  discount    Float       @default(0)
-  notes       String?
-  orderDate   DateTime    @default(now())
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  createdBy   String
-  createdByUser User      @relation(fields: [createdBy], references: [id])
-
-  // İlişkiler
-  items       OrderItem[]
-  payments    Payment[]
-  invoices    Invoice[]
-  transactions Transaction[]
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  customerId    String
+  status        String        @default("PENDING")
+  totalAmount   Float
+  taxAmount     Float         @default(0)
+  discount      Float         @default(0)
+  notes         String?
+  orderDate     DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  createdBy     String
+  invoices      Invoice[]
+  items         OrderItem[]
+  createdByUser User          @relation(fields: [createdBy], references: [id])
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  payments      Payment[]
+  transactions  Transaction[]
 
   @@map("orders")
-}
-
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
 }
 
 model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
-  order     Order   @relation(fields: [orderId], references: [id])
   productId String
-  product   Product @relation(fields: [productId], references: [id])
   quantity  Int
   price     Float
   total     Float
+  product   Product @relation(fields: [productId], references: [id])
+  order     Order   @relation(fields: [orderId], references: [id])
 
   @@map("order_items")
 }
 
-// Finansal Yönetim
 model Payment {
-  id          String        @id @default(cuid())
-  orderId     String
-  order       Order         @relation(fields: [orderId], references: [id])
-  amount      Float
-  method      PaymentMethod
-  status      PaymentStatus @default(PENDING)
-  reference   String?
-  paymentDate DateTime      @default(now())
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  // İlişkiler
+  id           String        @id @default(cuid())
+  orderId      String
+  amount       Float
+  method       String
+  status       String        @default("PENDING")
+  reference    String?
+  paymentDate  DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  order        Order         @relation(fields: [orderId], references: [id])
   transactions Transaction[]
 
   @@map("payments")
 }
 
-enum PaymentMethod {
-  CASH
-  CREDIT_CARD
-  BANK_TRANSFER
-  CHECK
-}
-
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
-}
-
-// Muhasebe Yönetimi
 model Invoice {
   id            String        @id @default(cuid())
   invoiceNumber String        @unique
   orderId       String?
-  order         Order?        @relation(fields: [orderId], references: [id])
   customerId    String?
-  customer      Customer?     @relation(fields: [customerId], references: [id])
-  type          InvoiceType
-  status        InvoiceStatus @default(DRAFT)
+  type          String
+  status        String        @default("DRAFT")
   subtotal      Float
   taxAmount     Float         @default(0)
   discount      Float         @default(0)
@@ -241,160 +176,106 @@ model Invoice {
   updatedAt     DateTime      @updatedAt
   createdBy     String
   createdByUser User          @relation(fields: [createdBy], references: [id])
-
-  // İlişkiler
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  order         Order?        @relation(fields: [orderId], references: [id])
   transactions  Transaction[]
 
   @@map("invoices")
 }
 
-enum InvoiceType {
-  SALES
-  PURCHASE
-  EXPENSE
-}
-
-enum InvoiceStatus {
-  DRAFT
-  SENT
-  PAID
-  CANCELLED
-}
-
 model Transaction {
-  id          String              @id @default(cuid())
-  type        TransactionType
-  category    TransactionCategory
-  amount      Float
-  description String
-  reference   String?
-  date        DateTime            @default(now())
-  invoiceId   String?
-  invoice     Invoice?            @relation(fields: [invoiceId], references: [id])
-  orderId     String?
-  order       Order?              @relation(fields: [orderId], references: [id])
-  paymentId   String?
-  payment     Payment?            @relation(fields: [paymentId], references: [id])
+  id            String       @id @default(cuid())
+  type          String
+  category      String
+  amount        Float
+  description   String
+  reference     String?
+  date          DateTime     @default(now())
+  invoiceId     String?
+  orderId       String?
+  paymentId     String?
   bankAccountId String?
-  bankAccount BankAccount?        @relation(fields: [bankAccountId], references: [id])
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  createdBy   String
-  createdByUser User              @relation(fields: [createdBy], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  createdBy     String
+  createdByUser User         @relation(fields: [createdBy], references: [id])
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+  payment       Payment?     @relation(fields: [paymentId], references: [id])
+  order         Order?       @relation(fields: [orderId], references: [id])
+  invoice       Invoice?     @relation(fields: [invoiceId], references: [id])
 
   @@map("transactions")
 }
 
-enum TransactionType {
-  INCOME
-  EXPENSE
-}
-
-enum TransactionCategory {
-  SALES
-  PURCHASE
-  SALARY
-  RENT
-  UTILITIES
-  MARKETING
-  OTHER
-}
-
 model BankAccount {
-  id              String            @id @default(uuid())
-  bankName        String
-  branch          String
-  iban            String            @unique
-  accountNumber   String
-  currency        String            @default("TL") // Para birimi 
-  balance         Float             @default(0) // Güncel bakiye
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  isActive        Boolean           @default(true)
-
-  // İlişkiler
-  transactions    BankTransaction[]
-  bankStatements  BankStatement[]
-  financialTransactions Transaction[] // Ana finansal işlemlerle bağlantı
-  
-  // User ilişkileri
-  createdBy       String?
-  createdByUser   User?            @relation("BankAccountCreator", fields: [createdBy], references: [id])
-  updatedBy       String?
-  updatedByUser   User?            @relation("BankAccountUpdater", fields: [updatedBy], references: [id])
+  id                    String            @id @default(uuid())
+  bankName              String
+  branch                String
+  iban                  String            @unique
+  accountNumber         String
+  currency              String            @default("TRY")
+  balance               Float             @default(0)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  isActive              Boolean           @default(true)
+  createdBy             String?
+  updatedBy             String?
+  updatedByUser         User?             @relation("BankAccountUpdater", fields: [updatedBy], references: [id])
+  createdByUser         User?             @relation("BankAccountCreator", fields: [createdBy], references: [id])
+  bankStatements        BankStatement[]
+  transactions          BankTransaction[]
+  financialTransactions Transaction[]
 }
 
 model BankTransaction {
-  id                String              @id @default(uuid())
-  type              BankTransactionType // İşlem türü: Havale, EFT, Virman, Tahsilat, Ödeme
+  id                String      @id @default(uuid())
+  type              String
   amount            Float
-  currency          String              @default("TL") // Para birimi (örn: "TL", "USD")
-  description       String?             // İşlem açıklaması (isteğe bağlı)
-  transactionDate   DateTime            @default(now()) // İşlemin gerçekleştiği tarih ve saat
-  referenceNumber   String?             @unique // İşlem referans numarası (bankadan gelen)
-
-  // İlişkili banka hesabı
+  currency          String      @default("TRY")
+  description       String?
+  transactionDate   DateTime    @default(now())
+  referenceNumber   String?     @unique
   bankAccountId     String
-  bankAccount       BankAccount         @relation(fields: [bankAccountId], references: [id])
-
-  // Eğer işlem havale/EFT ise, karşı taraf bilgileri
   targetIban        String?
-  targetAccountName String?             // Karşı taraf hesap adı/sahibi
-  targetBankName    String?             // Karşı taraf banka adı
-
-  // Onay bilgileri
+  targetAccountName String?
+  targetBankName    String?
   approvedBy        String?
-  approvedByUser    User?              @relation("BankTransactionApprover", fields: [approvedBy], references: [id])
   approvedAt        DateTime?
-  
-  // Yetki kontrolü
   createdBy         String?
-  createdByUser     User?              @relation("BankTransactionCreator", fields: [createdBy], references: [id])
-
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-}
-
-// İşlem türlerini belirlemek için bir Enum
-enum BankTransactionType {
-  HAVALE
-  EFT
-  VIRMAN // Şirketin kendi hesapları arası transfer
-  TAHSILAT // Gelen para
-  ODEME // Giden para
-  DIGER
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  createdByUser     User?       @relation("BankTransactionCreator", fields: [createdBy], references: [id])
+  approvedByUser    User?       @relation("BankTransactionApprover", fields: [approvedBy], references: [id])
+  bankAccount       BankAccount @relation(fields: [bankAccountId], references: [id])
 }
 
 model BankStatement {
-  id              String      @id @default(uuid())
-  bankAccountId   String
-  bankAccount     BankAccount @relation(fields: [bankAccountId], references: [id])
-  statementDate   DateTime    // Ekstre tarihi (genellikle ekstrenin kesildiği tarih)
-  startDate       DateTime    // Ekstre başlangıç tarihi
-  endDate         DateTime    // Ekstre bitiş tarihi
-  balanceStart    Float       // Ekstre başlangıç bakiyesi
-  balanceEnd      Float       // Ekstre bitiş bakiyesi
-  statementContent Json?       // Ham ekstre verisi (JSON olarak saklanabilir)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id               String      @id @default(uuid())
+  bankAccountId    String
+  statementDate    DateTime
+  startDate        DateTime
+  endDate          DateTime
+  balanceStart     Float
+  balanceEnd       Float
+  statementContent Json?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  bankAccount      BankAccount @relation(fields: [bankAccountId], references: [id])
 
-  @@unique([bankAccountId, startDate, endDate]) // Bir hesap için belirli bir tarih aralığında tek ekstre olmalı
+  @@unique([bankAccountId, startDate, endDate])
 }
 
 model BankReporting {
-  id              String    @id @default(uuid())
-  reportName      String    // Raporun adı (örn: "Günlük Bakiye Raporu", "Aylık Hareket Raporu")
-  reportType      String    // Rapor türü (örn: "BALANCE", "TRANSACTION", "RECONCILIATION")
-  generatedDate   DateTime  @default(now()) // Raporun oluşturulduğu tarih
-  startDate       DateTime? // Raporun kapsadığı başlangıç tarihi
-  endDate         DateTime? // Raporun kapsadığı bitiş tarihi
-  reportParameters Json?     // Rapor parametreleri (JSON olarak saklanabilir)
-  reportData      Json      // Raporun çıktı verisi (JSON olarak saklanır)
-  
-  // Yetki kontrolü
-  generatedBy     String?   // Raporu oluşturan kullanıcı/sistem
-  generatedByUser User?     @relation("BankReportGenerator", fields: [generatedBy], references: [id])
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  reportName       String
+  reportType       String
+  generatedDate    DateTime  @default(now())
+  startDate        DateTime?
+  endDate          DateTime?
+  reportParameters Json?
+  reportData       Json
+  generatedBy      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  generatedByUser  User?     @relation("BankReportGenerator", fields: [generatedBy], references: [id])
 }

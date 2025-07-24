@@ -5,8 +5,8 @@ import { z } from "zod";
 
 const getBankStatementsSchema = z.object({
   accountId: z.string().min(1, "Bank account ID is required"),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
 });
 
 const createBankStatementSchema = z.object({
@@ -25,6 +25,12 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
+    console.log("Bank statements API called with params:", {
+      accountId: searchParams.get("accountId"),
+      startDate: searchParams.get("startDate"),
+      endDate: searchParams.get("endDate"),
+    });
+
     // Validate query parameters
     const validationResult = getBankStatementsSchema.safeParse({
       accountId: searchParams.get("accountId"),
@@ -33,6 +39,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.issues);
       return NextResponse.json(
         {
           message: "Validation error",
@@ -52,11 +59,18 @@ export async function GET(req: NextRequest) {
       bankAccountId: bankAccountId,
     };
 
-    if (startDate) {
-      where.startDate = { gte: new Date(startDate) };
+    // Tarih filtreleme - ekstre tarihini temel al
+    if (startDate && startDate !== null) {
+      where.statementDate = {
+        ...where.statementDate,
+        gte: new Date(startDate),
+      };
     }
-    if (endDate) {
-      where.endDate = { lte: new Date(endDate) };
+    if (endDate && endDate !== null) {
+      where.statementDate = {
+        ...where.statementDate,
+        lte: new Date(endDate),
+      };
     }
 
     const bankStatements = await prisma.bankStatement.findMany({
@@ -69,7 +83,10 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(bankStatements, { status: 200 });
+    return NextResponse.json(
+      { success: true, data: bankStatements },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error fetching bank statements:", error);
     return NextResponse.json(
@@ -120,7 +137,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(newBankStatement, { status: 201 });
+    return NextResponse.json(
+      { success: true, data: newBankStatement },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating bank statement:", error);
     return NextResponse.json(

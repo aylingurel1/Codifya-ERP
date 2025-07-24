@@ -1,57 +1,75 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect, ChangeEvent, useCallback } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Button } from '../../../components/ui/button'
-import { Badge } from '../../../components/ui/badge'
-import { Input } from '../../../components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
-import { Pagination } from '../../../components/ui/pagination'
-import { 
-  Plus, 
-  Search, 
-  Filter, 
+import React, { useState, useEffect, ChangeEvent, useCallback } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { Badge } from "../../../components/ui/badge";
+import { Input } from "../../../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../components/ui/table";
+import { Pagination } from "../../../components/ui/pagination";
+import {
+  Plus,
+  Search,
+  Filter,
   Download,
   Eye,
   Edit,
-  Trash2
-} from 'lucide-react'
-import { Invoice, InvoiceStatus, InvoiceType, InvoiceFilters } from '../types'
+  Trash2,
+} from "lucide-react";
+import { Invoice, InvoiceStatus, InvoiceType, InvoiceFilters } from "../types";
 
 interface InvoiceListProps {
-  invoices?: Invoice[]
-  total?: number
-  page?: number
-  limit?: number
-  loading?: boolean
-  onPageChange?: (page: number) => void
-  onFiltersChange?: (filters: InvoiceFilters) => void
-  onView?: (invoice: Invoice) => void
-  onEdit?: (invoice: Invoice) => void
-  onDelete?: (invoice: Invoice) => void
-  onCreate?: () => void
+  invoices?: Invoice[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  loading?: boolean;
+  onPageChange?: (page: number) => void;
+  onFiltersChange?: (filters: InvoiceFilters) => void;
+  onView?: (invoice: Invoice) => void;
+  onEdit?: (invoice: Invoice) => void;
+  onDelete?: (invoice: Invoice) => void;
+  onCreate?: () => void;
 }
 
 const statusColors: Record<InvoiceStatus, string> = {
-  DRAFT: 'bg-gray-100 text-gray-800',
-  SENT: 'bg-blue-100 text-blue-800',
-  PAID: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-red-100 text-red-800'
-}
+  DRAFT: "bg-gray-100 text-gray-800",
+  SENT: "bg-blue-100 text-blue-800",
+  PAID: "bg-green-100 text-green-800",
+  CANCELLED: "bg-red-100 text-red-800",
+};
 
 const statusLabels: Record<InvoiceStatus, string> = {
-  DRAFT: 'Taslak',
-  SENT: 'Gönderildi',
-  PAID: 'Ödendi',
-  CANCELLED: 'İptal'
-}
+  DRAFT: "Taslak",
+  SENT: "Gönderildi",
+  PAID: "Ödendi",
+  CANCELLED: "İptal",
+};
 
 const typeLabels: Record<InvoiceType, string> = {
-  SALES: 'Satış',
-  PURCHASE: 'Alış',
-  EXPENSE: 'Gider'
-}
+  SALES: "Satış",
+  PURCHASE: "Alış",
+  EXPENSE: "Gider",
+};
 
 export default function InvoiceList({
   invoices = [],
@@ -64,33 +82,33 @@ export default function InvoiceList({
   onView,
   onEdit,
   onDelete,
-  onCreate
+  onCreate,
 }: InvoiceListProps) {
   const [filters, setFilters] = useState<InvoiceFilters>({
     page: 1,
-    limit: 10
-  })
+    limit: 10,
+  });
 
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('')
-  const [typeFilter, setTypeFilter] = useState<InvoiceType | ''>('')
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "">("");
+  const [typeFilter, setTypeFilter] = useState<InvoiceType | "">("");
 
   // Debounced search için
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
-    }, 300)
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
 
-    return () => clearTimeout(timer)
-  }, [searchTerm])
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     const newFilters: InvoiceFilters = {
       page: 1,
-      limit: 10
-    }
+      limit: 10,
+    };
 
     if (debouncedSearchTerm) {
       // Arama için customer name veya invoice number kullanılabilir
@@ -98,46 +116,49 @@ export default function InvoiceList({
     }
 
     if (statusFilter) {
-      newFilters.status = statusFilter
+      newFilters.status = statusFilter;
     }
 
     if (typeFilter) {
-      newFilters.type = typeFilter
+      newFilters.type = typeFilter;
     }
 
-    setFilters(newFilters)
-    onFiltersChange?.(newFilters)
-  }, [debouncedSearchTerm, statusFilter, typeFilter, onFiltersChange])
+    setFilters(newFilters);
+    onFiltersChange?.(newFilters);
+  }, [debouncedSearchTerm, statusFilter, typeFilter, onFiltersChange]);
 
-  const handlePageChange = useCallback((newPage: number) => {
-    const newFilters = { ...filters, page: newPage }
-    setFilters(newFilters)
-    onPageChange?.(newPage)
-    onFiltersChange?.(newFilters)
-  }, [filters, onPageChange, onFiltersChange])
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      const newFilters = { ...filters, page: newPage };
+      setFilters(newFilters);
+      onPageChange?.(newPage);
+      onFiltersChange?.(newFilters);
+    },
+    [filters, onPageChange, onFiltersChange]
+  );
 
   const formatDate = useCallback((date: Date | string) => {
-    return new Date(date).toLocaleDateString('tr-TR')
-  }, [])
+    return new Date(date).toLocaleDateString("tr-TR");
+  }, []);
 
   const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY'
-    }).format(amount)
-  }, [])
+    return new Intl.NumberFormat("tr-TR", {
+      style: "currency",
+      currency: "TRY",
+    }).format(amount);
+  }, []);
 
   const handleSearchChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value)
-  }, [])
+    setSearchTerm(e.target.value);
+  }, []);
 
   const handleStatusChange = useCallback((value: string) => {
-    setStatusFilter(value as InvoiceStatus | '')
-  }, [])
+    setStatusFilter(value as InvoiceStatus | "");
+  }, []);
 
   const handleTypeChange = useCallback((value: string) => {
-    setTypeFilter(value as InvoiceType | '')
-  }, [])
+    setTypeFilter(value as InvoiceType | "");
+  }, []);
 
   if (loading) {
     return (
@@ -159,7 +180,7 @@ export default function InvoiceList({
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -193,9 +214,11 @@ export default function InvoiceList({
               />
             </div>
           </div>
-          <Select value={statusFilter} onChange={handleStatusChange}>
+          <Select value={statusFilter} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-40">
-              <SelectValue>Durum</SelectValue>
+              <SelectValue placeholder="Durum">
+                {statusFilter ? statusLabels[statusFilter] : "Tümü"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">Tümü</SelectItem>
@@ -206,9 +229,11 @@ export default function InvoiceList({
               ))}
             </SelectContent>
           </Select>
-          <Select value={typeFilter} onChange={handleTypeChange}>
+          <Select value={typeFilter} onValueChange={handleTypeChange}>
             <SelectTrigger className="w-40">
-              <SelectValue>Tür</SelectValue>
+              <SelectValue placeholder="Tür">
+                {typeFilter ? typeLabels[typeFilter] : "Tümü"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">Tümü</SelectItem>
@@ -249,11 +274,9 @@ export default function InvoiceList({
                       {invoice.invoiceNumber}
                     </TableCell>
                     <TableCell>
-                      {invoice.customer?.name || 'Bilinmeyen'}
+                      {invoice.customer?.name || "Bilinmeyen"}
                     </TableCell>
-                    <TableCell>
-                      {typeLabels[invoice.type]}
-                    </TableCell>
+                    <TableCell>{typeLabels[invoice.type]}</TableCell>
                     <TableCell>
                       <Badge className={statusColors[invoice.status]}>
                         {statusLabels[invoice.status]}
@@ -262,9 +285,7 @@ export default function InvoiceList({
                     <TableCell className="font-medium">
                       {formatCurrency(invoice.totalAmount)}
                     </TableCell>
-                    <TableCell>
-                      {formatDate(invoice.dueDate)}
-                    </TableCell>
+                    <TableCell>{formatDate(invoice.dueDate)}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Button
@@ -302,7 +323,8 @@ export default function InvoiceList({
         {total > limit && (
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-muted-foreground">
-              {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} / {total} sonuç
+              {(page - 1) * limit + 1} - {Math.min(page * limit, total)} /{" "}
+              {total} sonuç
             </div>
             <Pagination
               currentPage={page}
@@ -313,5 +335,5 @@ export default function InvoiceList({
         )}
       </CardContent>
     </Card>
-  )
-} 
+  );
+}
